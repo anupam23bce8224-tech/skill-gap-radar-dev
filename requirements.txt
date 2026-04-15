@@ -1,0 +1,26 @@
+# Core
+flask>=3.0.0
+gunicorn>=21.2.0
+flask-session>=0.6.0
+
+# AI / ML
+sentence-transformers>=2.7.0
+scikit-learn>=1.4.0
+numpy>=1.26.0
+
+# NLP
+spacy>=3.7.0
+
+# PDF Parsing
+pdfminer.six>=20221105
+
+# HTTP
+requests>=2.31.0
+
+# Caching & Rate Limiting
+redis>=5.0.0
+flask-limiter>=3.5.0
+
+# Security
+bcrypt>=4.1.0
+flask-wtf>=1.2.0
