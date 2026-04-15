@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+
+{% block title %}
+    Faculty Projects - Skill Gap Radar
+{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <div class="header">
+        <h1 style="font-family: 'Syne', sans-serif; font-size: 2.8rem; letter-spacing: -2px; margin-bottom: 8px;">
+            Project Management
+        </h1>
+        <p class="text-muted" style="max-width: 600px; font-size: 1.1rem;">
+            Post new projects and review student matches for your open positions.
+        </p>
+    </div>
+
+    <!-- Post Project Form -->
+    <div class="glass-card mb-6">
+        <h3 class="mb-4">Post New Project</h3>
+        <form id="post-project-form" class="flex-col gap-4">
+            <div class="form-group flex-col gap-2">
+                <label class="text-muted uppercase text-sm font-bold">Project Title</label>
+                <input type="text" id="project-title" class="glass-input" placeholder="e.g., AI-Powered Resume Parser" required>
+            </div>
+            <div class="form-group flex-col gap-2">
+                <label class="text-muted uppercase text-sm font-bold">Description</label>
+                <textarea id="project-description" class="glass-input" rows="3" placeholder="Describe the project scope and expected outcomes..."></textarea>
+            </div>
+            <div class="form-group flex-col gap-2">
+                <label class="text-muted uppercase text-sm font-bold">Required Skills (comma-separated)</label>
+                <input type="text" id="project-skills" class="glass-input" placeholder="Python, Machine Learning, Flask, SQL" required>
+                <span class="text-muted" style="font-size: 0.75rem;">At least 2 skills required</span>
+            </div>
+            <div id="post-error" class="text-error" style="color: #f87171; font-size: 0.85rem; display: none;"></div>
+            <div id="post-success" class="text-success" style="color: #4ade80; font-size: 0.85rem; display: none;"></div>
+            <button type="submit" class="glass-btn glass-btn-primary">Post Project</button>
+        </form>
+    </div>
+
+    <!-- Posted Projects List -->
+    <div class="glass-card">
+        <h3 class="mb-4">Your Posted Projects</h3>
+        <div id="projects-container">
+            <p class="text-muted">Loading projects...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        loadProjects();
+    });
+
+    async function loadProjects() {
+        const container = document.getElementById('projects-container');
+        try {
+            const res = await fetch('/faculty/projects');
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            
+            // Handle wrapped response {success, projects: [...]}
+            const projects = data.projects || (Array.isArray(data) ? data : []);
+            
+            if (!projects || projects.length === 0) {
+                container.innerHTML = '<p class="text-muted">No projects posted yet.</p>';
+                return;
+            }
+            
+            container.innerHTML = projects.map(p => `
+            <div class="project-card" style="border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 20px; margin-bottom: 16px; background: rgba(255,255,255,0.02);">
+                <div class="flex justify-between items-start mb-3">
+                    <div>
+                        <h4 style="font-size: 1.2rem; margin-bottom: 4px;">${escapeHtml(p.title)}</h4>
+                        <p class="text-muted" style="font-size: 0.85rem;">${escapeHtml(p.description || 'No description')}</p>
+                    </div>
+                    <span class="text-muted" style="font-size: 0.75rem;">${new Date(p.posted_at).toLocaleDateString()}</span>
+                </div>
+                <div class="mb-3">
+                    ${p.required_skills.map(s => `<span class="skill-badge required">${escapeHtml(s)}</span>`).join('')}
+                </div>
+                <div class="flex gap-2">
+                    <button class="glass-btn glass-btn-primary" onclick="viewMatches(${p.id}, this)">View Matches</button>
+                    <a href="/faculty/applications/${p.id}/view" class="glass-btn">View Applications</a>
+                </div>
+                <div id="matches-${p.id}" class="matches-container" style="margin-top: 20px; display: none;"></div>
+            </div>
+        `).join('');
+        } catch (err) {
+            console.error('loadProjects failed:', err);
+            container.innerHTML = '<p class="error" style="color: #f87171;">Failed to load projects. Please refresh.</p>';
+        }
+    }
+
+    async function viewMatches(projectId, btn) {
+        const container = document.getElementById(`matches-${projectId}`);
+        
+        if (container.style.display === 'block') {
+            container.style.display = 'none';
+            btn.textContent = 'View Matches';
+            return;
+        }
+        
+        container.style.display = 'block';
+        btn.textContent = 'Hide Matches';
+        container.innerHTML = '<p class="text-muted">Loading matches...</p>';
+        
+        try {
+            const res = await fetch(`/faculty/matches/${projectId}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            
+            // Handle wrapped response {success, matches: [...]}
+            const matches = data.matches || (Array.isArray(data) ? data : []);
+            
+            if (data.error) {
+                container.innerHTML = `<p class="text-error" style="color: #f87171;">${data.error}</p>`;
+                return;
+            }
+            
+            if (!matches || matches.length === 0) {
+                container.innerHTML = '<p class="text-muted">No matching students found.</p>';
+                return;
+            }
+            
+            container.innerHTML = `
+                <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 16px;">
+                    <h5 class="mb-3 text-accent">Top 5 Student Matches</h5>
+                    <div class="matches-grid">
+                        ${matches.map(m => `
+                            <div class="student-match-card" style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 16px; margin-bottom: 12px;">
+                                <div class="flex justify-between items-start mb-2">
+                                    <h6 style="font-size: 1rem; margin: 0;">${escapeHtml(m.student_name)}</h6>
+                                    <span class="match-score" style="font-size: 1.5rem; font-weight: bold; color: ${m.match_score >= 70 ? '#4ade80' : m.match_score >= 40 ? '#fbbf24' : '#f87171'};">${m.match_score}%</span>
+                                </div>
+                                <p class="match-reason" style="font-style: italic; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">
+                                    "${escapeHtml(m.match_reason)}"
+                                </p>
+                                <div class="mb-2">
+                                    <span class="text-muted" style="font-size: 0.75rem; text-transform: uppercase; font-weight: bold;">Matched Skills:</span>
+                                    <div style="margin-top: 4px;">
+                                        ${m.matched_skills.length > 0 ? m.matched_skills.map(s => `<span class="skill-badge matched">${escapeHtml(s)}</span>`).join('') : '<span class="text-muted" style="font-size: 0.8rem;">None</span>'}
+                                    </div>
+                                </div>
+                                <div>
+                                    <span class="text-muted" style="font-size: 0.75rem; text-transform: uppercase; font-weight: bold;">Missing Skills:</span>
+                                    <div style="margin-top: 4px;">
+                                        ${m.missing_skills.length > 0 ? m.missing_skills.map(s => `<span class="skill-badge missing">${escapeHtml(s)}</span>`).join('') : '<span class="text-muted" style="font-size: 0.8rem;">None</span>'}
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        } catch (err) {
+            console.error('viewMatches failed:', err);
+            container.innerHTML = '<p class="error" style="color: #f87171;">Failed to load matches. Please try again.</p>';
+        }
+    }
+
+    document.getElementById('post-project-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const title = document.getElementById('project-title').value.trim();
+        const description = document.getElementById('project-description').value.trim();
+        const skillsInput = document.getElementById('project-skills').value.trim();
+        const skills = skillsInput.split(',').map(s => s.trim()).filter(s => s);
+        
+        const errorDiv = document.getElementById('post-error');
+        const successDiv = document.getElementById('post-success');
+        
+        errorDiv.style.display = 'none';
+        successDiv.style.display = 'none';
+        
+        const res = await fetch('/faculty/post-project', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, description, required_skills: skills })
+        });
+        
+        const data = await res.json();
+        
+        if (!res.ok) {
+            errorDiv.textContent = data.error || 'Failed to post project';
+            errorDiv.style.display = 'block';
+            return;
+        }
+        
+        successDiv.textContent = `Project "${data.title}" posted successfully!`;
+        successDiv.style.display = 'block';
+        document.getElementById('post-project-form').reset();
+        loadProjects();
+    });
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+</script>
+{% endblock %}

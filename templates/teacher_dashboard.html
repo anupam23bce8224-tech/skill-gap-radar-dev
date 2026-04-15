@@ -1,0 +1,733 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {{ active|capitalize }} - Mentor Dashboard
+{% endblock %}
+
+{% block content %}
+<div class="dashboard" style="max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 32px;">
+    <!-- Header -->
+    <div class="header">
+        <p class="text-accent uppercase font-bold mb-2" style="font-size: 0.85rem; letter-spacing: 0.15em;">
+            Faculty Control / 
+            {% if active == 'dashboard' %}Projects
+            {% elif active == 'requests' %}Admissions
+            {% elif active == 'groups' %}Cohorts
+            {% elif active == 'discovery' %}Network
+            {% endif %}
+        </p>
+        <h1 style="font-family: 'Syne', sans-serif; font-size: 3rem; letter-spacing: -2px; margin-bottom: 8px;">
+            {% if active == 'dashboard' %}Project Management
+            {% elif active == 'requests' %}Student Applications
+            {% elif active == 'groups' %}Cohort Monitoring
+            {% elif active == 'discovery' %}Network Discovery
+            {% endif %}
+        </h1>
+        <p class="text-muted" style="max-width: 620px; font-size: 1.15rem; line-height: 1.6;">
+            {% if active == 'dashboard' %}Orchestrate your research projects, conduct AI-driven audits, and build your engineering team.
+            {% elif active == 'requests' %}Review and manage incoming talent applications across your active project nodes.
+            {% elif active == 'groups' %}Real-time project telemetry and collaborative growth metrics for your active cohorts.
+            {% elif active == 'discovery' %}Audit external engineering intelligence across the regional Skill Gap Radar network.
+            {% endif %}
+        </p>
+    </div>
+
+    <!-- ── DASHBOARD (Projects & Matching) ── -->
+    {% if active == 'dashboard' %}
+    
+    <!-- Stats Row -->
+    <div class="stats-grid" id="dashboard-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px;">
+        <div class="glass-card animate-slide-up" style="border-bottom: 3px solid var(--accent); padding: 28px; animation-delay: 0.1s;">
+            <div class="text-muted font-bold uppercase mb-2" style="font-size: 0.75rem; letter-spacing: 0.1em">Active Nodes</div>
+            <h2 style="font-size: 2.5rem; color: var(--accent); margin: 0;" id="stat-projects">-</h2>
+        </div>
+        <div class="glass-card animate-slide-up" style="border-bottom: 3px solid #8b5cf6; padding: 28px; animation-delay: 0.2s;">
+            <div class="text-muted font-bold uppercase mb-2" style="font-size: 0.75rem; letter-spacing: 0.1em">Total Applicants</div>
+            <h2 style="font-size: 2.5rem; color: #fff; margin: 0;" id="stat-applications">-</h2>
+        </div>
+        <div class="glass-card animate-slide-up" style="border-bottom: 3px solid #f59e0b; padding: 28px; animation-delay: 0.3s;">
+            <div class="text-muted font-bold uppercase mb-2" style="font-size: 0.75rem; letter-spacing: 0.1em">Awaiting Audit</div>
+            <h2 style="font-size: 2.5rem; color: #f59e0b; margin: 0;" id="stat-pending">-</h2>
+        </div>
+    </div>
+
+    <!-- Create Project Section -->
+    <div class="glass-card mb-2 animate-slide-up" style="padding: 28px; animation-delay: 0.4s;">
+        <div class="flex justify-between items-center mb-6">
+            <h3 style="font-size: 1.4rem; margin: 0;">Initiate Project Node</h3>
+            <button class="glass-btn glass-btn-primary" onclick="toggleCreateForm()" id="create-btn">
+                <i data-lucide="plus" style="width: 18px; margin-right: 8px;"></i>
+                Deploy Project
+            </button>
+        </div>
+        <form id="create-project-form" style="display: none; border-top: 1px solid var(--border); padding-top: 24px; margin-top: 24px;">
+            <div class="grid grid-2 gap-6 mb-6">
+                <div class="form-group flex-col gap-2">
+                    <label class="text-muted uppercase text-xs font-bold" style="letter-spacing: 1px;">Project Designation *</label>
+                    <input type="text" id="new-title" class="glass-input p-4" placeholder="e.g., Quantum Intelligence Cluster" required>
+                </div>
+                <div class="form-group flex-col gap-2">
+                    <label class="text-muted uppercase text-xs font-bold" style="letter-spacing: 1px;">Target Skill Matrix *</label>
+                    <input type="text" id="new-skills" class="glass-input p-4" placeholder="Python, ML, Flask (comma-separated)" required>
+                </div>
+            </div>
+            <div class="form-group flex-col gap-2 mb-6">
+                <label class="text-muted uppercase text-xs font-bold" style="letter-spacing: 1px;">Execution Scope</label>
+                <textarea id="new-description" class="glass-input p-4" rows="3" placeholder="Define the technical boundaries and research goals..."></textarea>
+            </div>
+            <div id="create-error" class="text-error mb-4" style="display: none; background: rgba(248, 113, 113, 0.1); padding: 12px; border-radius: 8px; border: 1px solid rgba(248, 113, 113, 0.2);"></div>
+            <div id="create-success" class="text-success mb-4" style="display: none; background: rgba(74, 222, 128, 0.1); padding: 12px; border-radius: 8px; border: 1px solid rgba(74, 222, 128, 0.2);"></div>
+            <div class="flex gap-4">
+                <button type="button" class="glass-btn w-32" onclick="toggleCreateForm()">Abort</button>
+                <button type="submit" class="glass-btn glass-btn-primary flex-1">Confirm Deployment</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Projects List -->
+    <div class="animate-slide-up" style="animation-delay: 0.5s;">
+        <div class="flex justify-between items-center mb-6 px-2">
+            <h3 style="font-size: 1.4rem; margin: 0;">Active Research Nodes</h3>
+            <button class="glass-btn btn-sm" onclick="loadProjects()" title="Resync Data Feed" style="padding: 10px;">
+                <i data-lucide="refresh-cw" style="width: 16px;"></i>
+            </button>
+        </div>
+        <div id="projects-container" style="display: flex; flex-direction: column; gap: 20px;">
+            <div class="glass-card flex justify-center py-20">
+                <div class="text-muted" style="letter-spacing: 2px; font-size: 0.8rem; text-transform: uppercase;">Awaiting Synchronization...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── REQUESTS (Applications View) ── -->
+    {% elif active == 'requests' %}
+    <div class="glass-card mb-8 animate-slide-up" style="padding: 28px;">
+        <h3 style="font-size: 1.4rem; margin: 0 0 8px 0;">Unified Audit Log</h3>
+        <p class="text-muted" style="margin: 0;">Review and verify student applications across your entire engineering network.</p>
+    </div>
+    <div id="all-applications-container" class="animate-slide-up" style="animation-delay: 0.2s;">
+        <div class="glass-card flex justify-center py-20">
+            <div class="text-muted" style="letter-spacing: 2px; font-size: 0.8rem; text-transform: uppercase;">Streaming application nodes...</div>
+        </div>
+    </div>
+
+    <!-- ── MONITORING ── -->
+    {% elif active == 'groups' %}
+    <div class="main-section animate-slide-up" style="grid-template-columns: 1fr;">
+        <div id="monitoring-grid" class="grid grid-auto gap-8">
+            <p class="text-muted">Synchronizing production telemetry...</p>
+        </div>
+    </div>
+
+    <!-- ── DISCOVERY NETWORK ── -->
+    {% elif active == 'discovery' %}
+    <div class="flex-col gap-8">
+        <div class="glass-card mb-8 animate-slide-up" style="padding: 28px;">
+            <h3 style="font-size: 1.4rem; margin: 0 0 8px 0;">Intelligence Recon</h3>
+            <p class="text-muted" style="margin: 0;">Audit external engineering cohorts and high-potential talent nodes across the platform.</p>
+        </div>
+        <div id="discovery-grid" class="grid grid-auto gap-8 animate-slide-up" style="animation-delay: 0.2s;">
+            <p class="text-muted">Interfacing with available engineering networks...</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    // Global state
+    let projectsData = [];
+
+    document.addEventListener('DOMContentLoaded', () => {
+        lucide.createIcons();
+        
+        {% if active == 'dashboard' %}
+            loadProjects();
+            loadDashboardStats();
+        {% elif active == 'requests' %}
+            loadAllApplications();
+        {% elif active == 'groups' %}
+            loadMonitoringData();
+        {% elif active == 'discovery' %}
+            loadDiscovery();
+        {% endif %}
+    });
+
+    // ============ DASHBOARD FUNCTIONS ============
+
+    async function loadDashboardStats() {
+        try {
+            console.log('[Dashboard] Loading stats...');
+            
+            // Get projects count
+            const projectsRes = await fetch('/faculty/projects');
+            const projects = await projectsRes.json();
+            const projectCount = Array.isArray(projects) ? projects.length : 0;
+            
+            // Get total applications and pending count across all projects
+            let totalApps = 0;
+            let pendingApps = 0;
+            
+            if (Array.isArray(projects)) {
+                for (const project of projects) {
+                    try {
+                        const appsRes = await fetch(`/faculty/applications/${project.id}`);
+                        const apps = await appsRes.json();
+                        if (Array.isArray(apps)) {
+                            totalApps += apps.length;
+                            pendingApps += apps.filter(a => a.status === 'pending').length;
+                        }
+                    } catch (e) {
+                        console.error(`[Dashboard] Error loading apps for project ${project.id}:`, e);
+                    }
+                }
+            }
+            
+            // Update stats
+            document.getElementById('stat-projects').textContent = projectCount;
+            document.getElementById('stat-applications').textContent = totalApps;
+            document.getElementById('stat-pending').textContent = pendingApps;
+            
+            console.log('[Dashboard] Stats loaded:', { projects: projectCount, applications: totalApps, pending: pendingApps });
+        } catch (error) {
+            console.error('[Dashboard] Error loading stats:', error);
+        }
+    }
+
+    async function loadProjects() {
+        const container = document.getElementById('projects-container');
+        container.innerHTML = '<div class="flex justify-center py-12"><div class="text-muted">Loading projects...</div></div>';
+        
+        try {
+            console.log('[Projects] Fetching from /faculty/projects...');
+            const res = await fetch('/faculty/projects');
+            
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+            }
+            
+            const projects = await res.json();
+            console.log('[Projects] API response:', projects);
+            
+            projectsData = Array.isArray(projects) ? projects : [];
+            
+            if (projectsData.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12">
+                        <i data-lucide="folder-open" style="width: 48px; height: 48px; color: var(--text-muted); margin-bottom: 16px;"></i>
+                        <p class="text-muted mb-4">No projects yet. Create one to begin.</p>
+                        <button class="glass-btn glass-btn-primary" onclick="toggleCreateForm()">Create First Project</button>
+                    </div>
+                `;
+                lucide.createIcons();
+                return;
+            }
+            
+            container.innerHTML = projectsData.map(p => `
+                <div class="project-card mb-4" id="project-card-${p.id}">
+                    <div class="flex justify-between items-start mb-3">
+                        <div>
+                            <h4 style="font-size: 1.2rem; margin-bottom: 4px;">${escapeHtml(p.title)}</h4>
+                            <p class="text-muted" style="font-size: 0.85rem;">${escapeHtml(p.description || 'No description')}</p>
+                        </div>
+                        <span class="text-muted" style="font-size: 0.75rem;">${new Date(p.posted_at).toLocaleDateString()}</span>
+                    </div>
+                    <div class="mb-3">
+                        ${p.required_skills.map(s => `<span class="skill-badge required">${escapeHtml(s)}</span>`).join('')}
+                    </div>
+                    <div class="flex gap-2">
+                        <button class="glass-btn glass-btn-primary" onclick="toggleMatches(${p.id})">
+                            <i data-lucide="users" style="width: 16px; margin-right: 6px;"></i>
+                            View Matches
+                        </button>
+                        <button class="glass-btn" onclick="toggleApplications(${p.id})">
+                            <i data-lucide="file-text" style="width: 16px; margin-right: 6px;"></i>
+                            Applications
+                        </button>
+                    </div>
+                    
+                    <!-- Inline Matches Section -->
+                    <div id="matches-section-${p.id}" class="matches-section" style="display: none; margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
+                        <div class="flex justify-between items-center mb-3">
+                            <h5 class="text-accent">AI-Matched Students (Top 5)</h5>
+                            <button class="glass-btn" style="padding: 6px 12px; font-size: 0.75rem;" onclick="loadMatches(${p.id})">Refresh</button>
+                        </div>
+                        <div id="matches-content-${p.id}">
+                            <p class="text-muted">Click "View Matches" to see AI-ranked students...</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Inline Applications Section -->
+                    <div id="applications-section-${p.id}" class="applications-section" style="display: none; margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
+                        <div class="flex justify-between items-center mb-3">
+                            <h5 class="text-accent">Applications</h5>
+                            <button class="glass-btn" style="padding: 6px 12px; font-size: 0.75rem;" onclick="loadApplications(${p.id})">Refresh</button>
+                        </div>
+                        <div id="applications-content-${p.id}">
+                            <p class="text-muted">Loading applications...</p>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            lucide.createIcons();
+            
+            // Reload stats after projects load
+            loadDashboardStats();
+            
+        } catch (error) {
+            console.error('[Projects] Error:', error);
+            container.innerHTML = `
+                <div class="text-center py-12">
+                    <i data-lucide="alert-circle" style="width: 48px; height: 48px; color: #f87171; margin-bottom: 16px;"></i>
+                    <p class="text-error">Failed to load projects: ${error.message}</p>
+                    <button class="glass-btn mt-4" onclick="loadProjects()">Try Again</button>
+                </div>
+            `;
+            lucide.createIcons();
+        }
+    }
+
+    async function toggleMatches(projectId) {
+        const section = document.getElementById(`matches-section-${projectId}`);
+        const isVisible = section.style.display === 'block';
+        
+        // Hide all other sections
+        document.querySelectorAll('.matches-section, .applications-section').forEach(el => {
+            el.style.display = 'none';
+        });
+        
+        if (!isVisible) {
+            section.style.display = 'block';
+            await loadMatches(projectId);
+        }
+    }
+
+    async function loadMatches(projectId) {
+        const content = document.getElementById(`matches-content-${projectId}`);
+        content.innerHTML = '<p class="text-muted">Loading AI matches...</p>';
+        
+        try {
+            console.log(`[Matches] Fetching for project ${projectId}...`);
+            const res = await fetch(`/faculty/matches/${projectId}`);
+            
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+            }
+            
+            const matches = await res.json();
+            console.log('[Matches] API response:', matches);
+            
+            if (!Array.isArray(matches) || matches.length === 0) {
+                content.innerHTML = '<p class="text-muted">No matching students found yet. Students will appear here once they apply.</p>';
+                return;
+            }
+            
+            content.innerHTML = `
+                <div class="matches-grid">
+                    ${matches.map((m, index) => `
+                        <div class="student-match-card" style="background: rgba(255,255,255,0.03); border-radius: 10px; padding: 16px;">
+                            <div class="flex justify-between items-start mb-2">
+                                <div class="flex items-center gap-2">
+                                    <span style="font-size: 1.2rem; font-weight: bold; color: ${index < 3 ? '#4ade80' : 'var(--text-muted)'};">#${index + 1}</span>
+                                    <h6 style="font-size: 1rem; margin: 0;">${escapeHtml(m.student_name)}</h6>
+                                </div>
+                                <span class="match-score" style="color: ${m.match_score >= 70 ? '#4ade80' : m.match_score >= 40 ? '#fbbf24' : '#f87171'};">${m.match_score}%</span>
+                            </div>
+                            <p class="match-reason mb-3" style="font-style: italic; font-size: 0.8rem; color: var(--text-muted);">
+                                "${escapeHtml(m.match_reason)}"
+                            </p>
+                            <div class="mb-2">
+                                <span class="text-muted" style="font-size: 0.7rem; text-transform: uppercase; font-weight: bold;">Matched:</span>
+                                <div style="margin-top: 4px;">
+                                    ${m.matched_skills.length > 0 ? m.matched_skills.map(s => `<span class="skill-badge matched">${escapeHtml(s)}</span>`).join('') : '<span class="text-muted" style="font-size: 0.75rem;">None</span>'}
+                                </div>
+                            </div>
+                            <div>
+                                <span class="text-muted" style="font-size: 0.7rem; text-transform: uppercase; font-weight: bold;">Missing:</span>
+                                <div style="margin-top: 4px;">
+                                    ${m.missing_skills.length > 0 ? m.missing_skills.map(s => `<span class="skill-badge missing">${escapeHtml(s)}</span>`).join('') : '<span class="text-muted" style="font-size: 0.75rem;">None</span>'}
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        } catch (error) {
+            console.error('[Matches] Error:', error);
+            content.innerHTML = `<p class="text-error">Error loading matches: ${error.message}</p>`;
+        }
+    }
+
+    async function toggleApplications(projectId) {
+        const section = document.getElementById(`applications-section-${projectId}`);
+        const isVisible = section.style.display === 'block';
+        
+        // Hide all other sections
+        document.querySelectorAll('.matches-section, .applications-section').forEach(el => {
+            el.style.display = 'none';
+        });
+        
+        if (!isVisible) {
+            section.style.display = 'block';
+            await loadApplications(projectId);
+        }
+    }
+
+    async function loadApplications(projectId) {
+        const content = document.getElementById(`applications-content-${projectId}`);
+        content.innerHTML = '<p class="text-muted">Loading applications...</p>';
+        
+        try {
+            console.log(`[Applications] Fetching for project ${projectId}...`);
+            const res = await fetch(`/faculty/applications/${projectId}`);
+            
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+            }
+            
+            const apps = await res.json();
+            console.log('[Applications] API response:', apps);
+            
+            if (!Array.isArray(apps) || apps.length === 0) {
+                content.innerHTML = '<p class="text-muted">No applications yet. Students will appear here once they apply.</p>';
+                return;
+            }
+            
+            content.innerHTML = `
+                <div class="applications-list">
+                    ${apps.map((app, index) => `
+                        <div class="application-card" style="background: rgba(255,255,255,0.03); border-radius: 10px; padding: 16px; margin-bottom: 12px;" id="app-card-${app.application_id}">
+                            <div class="flex justify-between items-start mb-2">
+                                <div class="flex items-center gap-3">
+                                    <span style="font-size: 1.1rem; font-weight: bold; color: ${index < 3 ? '#4ade80' : 'var(--text-muted)'};">#${index + 1}</span>
+                                    <div>
+                                        <h6 style="font-size: 1rem; margin: 0;">${escapeHtml(app.student_name)}</h6>
+                                        <span class="match-reason" style="font-size: 0.75rem;">${escapeHtml(app.match_reason)}</span>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="match-score mb-1" style="font-size: 1.3rem; color: ${app.match_score >= 70 ? '#4ade80' : app.match_score >= 40 ? '#fbbf24' : '#f87171'};">${app.match_score}%</div>
+                                    <span class="status-badge ${app.status}">${app.status}</span>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <span class="text-muted" style="font-size: 0.7rem; text-transform: uppercase; font-weight: bold;">Skills Match:</span>
+                                <div style="margin-top: 4px;">
+                                    ${app.matched_skills.length > 0 ? app.matched_skills.map(s => `<span class="skill-badge matched">${escapeHtml(s)}</span>`).join('') : '<span class="text-muted" style="font-size: 0.75rem;">None</span>'}
+                                </div>
+                            </div>
+                            ${app.project_idea ? `
+                                <div class="mb-2" style="background: rgba(255,255,255,0.02); padding: 8px 12px; border-radius: 6px;">
+                                    <span class="text-muted" style="font-size: 0.7rem; text-transform: uppercase; font-weight: bold;">Project Idea:</span>
+                                    <p style="font-size: 0.85rem; margin: 4px 0 0 0;">${escapeHtml(app.project_idea)}</p>
+                                </div>
+                            ` : ''}
+                            ${app.status === 'pending' ? `
+                                <div class="flex gap-2 mt-3">
+                                    <button class="glass-btn glass-btn-primary" style="font-size: 0.75rem; padding: 8px 16px;" onclick="updateApplicationStatus(${app.application_id}, 'accepted', ${projectId})">Accept</button>
+                                    <button class="glass-btn" style="font-size: 0.75rem; padding: 8px 16px; background: rgba(248, 113, 113, 0.1); color: #f87171; border-color: rgba(248, 113, 113, 0.3);" onclick="updateApplicationStatus(${app.application_id}, 'rejected', ${projectId})">Reject</button>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        } catch (error) {
+            console.error('[Applications] Error:', error);
+            content.innerHTML = `<p class="text-error">Error loading applications: ${error.message}</p>`;
+        }
+    }
+
+    async function updateApplicationStatus(applicationId, status, projectId) {
+        try {
+            console.log(`[Application] Updating ${applicationId} to ${status}...`);
+            const res = await fetch(`/faculty/applications/${applicationId}/status`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status })
+            });
+            
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+            }
+            
+            const result = await res.json();
+            console.log('[Application] Update result:', result);
+            
+            // Reload applications for this project
+            await loadApplications(projectId);
+            // Reload dashboard stats
+            await loadDashboardStats();
+            
+        } catch (error) {
+            console.error('[Application] Error updating status:', error);
+            alert('Failed to update status: ' + error.message);
+        }
+    }
+
+    // ============ CREATE PROJECT ============
+
+    function toggleCreateForm() {
+        const form = document.getElementById('create-project-form');
+        const btn = document.getElementById('create-btn');
+        
+        if (form.style.display === 'none') {
+            form.style.display = 'block';
+            btn.textContent = 'Cancel';
+        } else {
+            form.style.display = 'none';
+            btn.textContent = '+ New Project';
+            // Clear errors
+            document.getElementById('create-error').style.display = 'none';
+            document.getElementById('create-success').style.display = 'none';
+        }
+    }
+
+    document.getElementById('create-project-form')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const title = document.getElementById('new-title').value.trim();
+        const description = document.getElementById('new-description').value.trim();
+        const skillsInput = document.getElementById('new-skills').value.trim();
+        const required_skills = skillsInput.split(',').map(s => s.trim()).filter(s => s);
+        
+        const errorDiv = document.getElementById('create-error');
+        const successDiv = document.getElementById('create-success');
+        
+        errorDiv.style.display = 'none';
+        successDiv.style.display = 'none';
+        
+        if (required_skills.length < 2) {
+            errorDiv.textContent = 'Please provide at least 2 required skills';
+            errorDiv.style.display = 'block';
+            return;
+        }
+        
+        try {
+            console.log('[Create] Posting project:', { title, description, required_skills });
+            const res = await fetch('/faculty/post-project', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, description, required_skills })
+            });
+            
+            const data = await res.json();
+            
+            if (!res.ok) {
+                throw new Error(data.error || `HTTP ${res.status}`);
+            }
+            
+            console.log('[Create] Success:', data);
+            successDiv.textContent = `Project "${data.title}" created successfully!`;
+            successDiv.style.display = 'block';
+            
+            // Reset form and hide
+            document.getElementById('create-project-form').reset();
+            setTimeout(() => {
+                toggleCreateForm();
+                loadProjects();
+            }, 1500);
+            
+        } catch (error) {
+            console.error('[Create] Error:', error);
+            errorDiv.textContent = error.message;
+            errorDiv.style.display = 'block';
+        }
+    });
+
+    // ============ REQUESTS PAGE (ALL APPLICATIONS) ============
+
+    async function loadAllApplications() {
+        const container = document.getElementById('all-applications-container');
+        container.innerHTML = '<div class="flex justify-center py-12"><div class="text-muted">Loading all applications...</div></div>';
+        
+        try {
+            // First get all projects
+            const projectsRes = await fetch('/faculty/projects');
+            const projects = await projectsRes.json();
+            
+            if (!Array.isArray(projects) || projects.length === 0) {
+                container.innerHTML = `
+                    <div class="glass-card text-center py-12">
+                        <i data-lucide="inbox" style="width: 48px; height: 48px; color: var(--text-muted); margin-bottom: 16px;"></i>
+                        <p class="text-muted">No projects found. Create a project to receive applications.</p>
+                    </div>
+                `;
+                lucide.createIcons();
+                return;
+            }
+            
+            // Fetch applications for each project
+            let allApps = [];
+            for (const project of projects) {
+                try {
+                    const appsRes = await fetch(`/faculty/applications/${project.id}`);
+                    const apps = await appsRes.json();
+                    if (Array.isArray(apps)) {
+                        apps.forEach(app => {
+                            allApps.push({ ...app, project_title: project.title, project_id: project.id });
+                        });
+                    }
+                } catch (e) {
+                    console.error(`[AllApps] Error loading apps for project ${project.id}:`, e);
+                }
+            }
+            
+            // Sort by match score
+            allApps.sort((a, b) => b.match_score - a.match_score);
+            
+            if (allApps.length === 0) {
+                container.innerHTML = `
+                    <div class="glass-card text-center py-12">
+                        <i data-lucide="inbox" style="width: 48px; height: 48px; color: var(--text-muted); margin-bottom: 16px;"></i>
+                        <p class="text-muted">No applications received yet.</p>
+                    </div>
+                `;
+                lucide.createIcons();
+                return;
+            }
+            
+            container.innerHTML = `
+                <div class="applications-table-wrapper glass-card">
+                    <table class="applications-table">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Student</th>
+                                <th>Project</th>
+                                <th>Match</th>
+                                <th>Reason</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${allApps.map((app, index) => `
+                                <tr id="all-apps-row-${app.application_id}">
+                                    <td style="font-weight: bold; color: ${index < 3 ? '#4ade80' : 'var(--text-muted)'};">#${index + 1}</td>
+                                    <td style="font-weight: 600;">${escapeHtml(app.student_name)}</td>
+                                    <td style="font-size: 0.85rem;">${escapeHtml(app.project_title)}</td>
+                                    <td>
+                                        <span style="font-weight: bold; color: ${app.match_score >= 70 ? '#4ade80' : app.match_score >= 40 ? '#fbbf24' : '#f87171'};">${app.match_score}%</span>
+                                    </td>
+                                    <td style="font-size: 0.8rem; max-width: 200px; font-style: italic; color: var(--text-muted);">${escapeHtml(app.match_reason)}</td>
+                                    <td><span class="status-badge ${app.status}">${app.status}</span></td>
+                                    <td>
+                                        ${app.status === 'pending' ? `
+                                            <div class="flex gap-2">
+                                                <button class="glass-btn glass-btn-primary" style="font-size: 0.7rem; padding: 6px 12px;" onclick="updateAllAppsStatus(${app.application_id}, 'accepted')">Accept</button>
+                                                <button class="glass-btn" style="font-size: 0.7rem; padding: 6px 12px; background: rgba(248, 113, 113, 0.1); color: #f87171; border-color: rgba(248, 113, 113, 0.3);" onclick="updateAllAppsStatus(${app.application_id}, 'rejected')">Reject</button>
+                                            </div>
+                                        ` : '<span style="font-size: 0.75rem; color: var(--text-muted);">Reviewed</span>'}
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            lucide.createIcons();
+            
+        } catch (error) {
+            console.error('[AllApps] Error:', error);
+            container.innerHTML = `
+                <div class="glass-card text-center py-12">
+                    <i data-lucide="alert-circle" style="width: 48px; height: 48px; color: #f87171; margin-bottom: 16px;"></i>
+                    <p class="text-error">Failed to load applications: ${error.message}</p>
+                    <button class="glass-btn mt-4" onclick="loadAllApplications()">Try Again</button>
+                </div>
+            `;
+            lucide.createIcons();
+        }
+    }
+
+    async function updateAllAppsStatus(applicationId, status) {
+        try {
+            const res = await fetch(`/faculty/applications/${applicationId}/status`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status })
+            });
+            
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            }
+            
+            // Reload the table
+            await loadAllApplications();
+            
+        } catch (error) {
+            console.error('[AllApps] Error updating status:', error);
+            alert('Failed to update status: ' + error.message);
+        }
+    }
+
+    // ============ LEGACY FUNCTIONS (for groups/discovery) ============
+
+    async function loadMonitoringData() {
+        const res = await fetch('/get_groups');
+        const data = await res.json();
+        const grid = document.getElementById('monitoring-grid');
+        grid.innerHTML = data.groups.map(g => `
+            <div class="glass-card">
+                <div class="flex justify-between mb-4">
+                    <h4 class="text-accent font-bold">${escapeHtml(g.name)}</h4>
+                    <span class="text-muted uppercase" style="font-size: 0.85rem; font-weight: 700; letter-spacing: 0.1em; border: 1px solid rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 20px;">${g.status}</span>
+                </div>
+                <p class="mb-6" style="font-size: 0.9rem; font-weight: 500;">${escapeHtml(g.project_title)}</p>
+                <div class="mb-8">
+                    <p class="text-muted uppercase text-xs mb-3 font-bold" style="letter-spacing:0.1em;">Team Matrix</p>
+                    <div class="flex" style="flex-wrap: wrap; gap: 8px;">
+                        ${g.members.map(m => `
+                            <span style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 6px; font-size: 0.95rem; font-weight:600; color: #fff;">${escapeHtml(m.name)}</span>
+                        `).join('')}
+                    </div>
+                </div>
+                <button class="glass-btn glass-btn-primary w-full" style="font-size:0.8rem;">Evaluate Production</button>
+            </div>
+        `).join('') || '<div class="glass-card text-center py-12" style="grid-column: 1/-1;"><p class="text-muted">No active cohorts detected.</p></div>';
+        lucide.createIcons();
+    }
+
+    async function loadDiscovery() {
+        const res = await fetch('/get_groups');
+        const data = await res.json();
+        const grid = document.getElementById('discovery-grid');
+        grid.innerHTML = '';
+        
+        if (data.groups.length === 0) {
+            grid.innerHTML = '<div class="glass-card w-full text-center py-6" style="grid-column: 1/-1;"><p class="text-muted">No external cohorts detected on the network.</p></div>';
+            return;
+        }
+
+        data.groups.forEach(g => {
+            const members = g.members.map(m => `<span class="badge" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 6px; font-size: 0.95rem; font-weight:600; color: #fff;">${escapeHtml(m.name)}</span>`).join('');
+            grid.innerHTML += `
+                <div class="glass-card flex-col flex justify-between" style="border-top: 3px solid #8b5cf6;">
+                    <div>
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h4 style="font-size: 1.1rem; margin-bottom: 4px;">${escapeHtml(g.name)}</h4>
+                                <p class="text-accent text-sm font-bold">${escapeHtml(g.project_title)}</p>
+                            </div>
+                        </div>
+                        <p class="mb-6 text-muted text-sm">${escapeHtml(g.description || 'General engineering project framework.')}</p>
+                        <div class="mb-6">
+                            <p class="text-muted text-xs uppercase font-bold mb-2">Team Formation</p>
+                            <div class="flex" style="flex-wrap: wrap; gap: 8px;">${members}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    // Utility
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,71 @@
+{% set role = session.get('role', 'student') %}
+
+<div class="sidebar-logo mb-12">
+    <h1 style="font-family: 'Syne', sans-serif; font-size: 1.5rem; letter-spacing: -1px; color: #fff;">
+        Skill<span class="text-accent">Gap</span>
+    </h1>
+</div>
+
+<nav style="display: flex; flex-direction: column; gap: 4px; flex: 1;">
+    {% if role == "student" %}
+        <a href="/dashboard" class="{% if active == 'dashboard' %}active{% endif %}">
+            <i data-lucide="layout-grid" style="width: 16px;"></i>
+            <span>Overview</span>
+        </a>
+        <a href="/radar" class="{% if active == 'radar' %}active{% endif %}">
+            <i data-lucide="target" style="width: 16px;"></i>
+            <span>Analysis</span>
+        </a>
+        <a href="/roadmap" class="{% if active == 'roadmap' %}active{% endif %}">
+            <i data-lucide="milestone" style="width: 16px;"></i>
+            <span>Path</span>
+        </a>
+        <a href="/student/projects-page" class="{% if active == 'projects' %}active{% endif %}">
+            <i data-lucide="briefcase" style="width: 16px;"></i>
+            <span>Projects</span>
+        </a>
+        <a href="/groups" class="{% if active == 'groups' %}active{% endif %}">
+            <i data-lucide="boxes" style="width: 16px;"></i>
+            <span>Collaboration</span>
+        </a>
+        <a href="/discovery" class="{% if active == 'discovery' %}active{% endif %}">
+            <i data-lucide="compass" style="width: 16px;"></i>
+            <span>Discovery</span>
+        </a>
+    {% elif role in ["teacher", "faculty"] %}
+        <a href="/dashboard" class="{% if active == 'dashboard' %}active{% endif %}">
+            <i data-lucide="monitor" style="width: 16px;"></i>
+            <span>Overview</span>
+        </a>
+        <a href="/requests" class="{% if active == 'requests' %}active{% endif %}">
+            <i data-lucide="user-plus" style="width: 16px;"></i>
+            <span>Admissions</span>
+        </a>
+        <a href="/groups" class="{% if active == 'groups' %}active{% endif %}">
+            <i data-lucide="users" style="width: 16px;"></i>
+            <span>Monitoring</span>
+        </a>
+    {% else %}
+        <div class="glass-card" style="padding: 12px; border-color: rgba(255,0,0,0.1);">
+            <p style="color: #f87171; font-size: 0.75rem;">Authentication Error.</p>
+        </div>
+    {% endif %}
+</nav>
+
+<div class="mt-auto pt-6" style="border-top: 1px solid var(--border);">
+    <div class="user-profile mb-4" style="display: flex; align-items: center; gap: 12px; padding: 12px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px;">
+        <div class="avatar" style="width: 36px; height: 36px; min-width: 36px; border-radius: 50%; background: linear-gradient(135deg, #00f5ff, #8b5cf6); display: flex; align-items: center; justify-content: center; color: #000; font-weight: bold; font-size: 1rem;">
+            {{ session.get('name', 'U')[0] | upper }}
+        </div>
+        <div class="user-info" style="flex: 1; overflow: hidden;">
+            <p style="font-size: 0.85rem; font-weight: 600; color: #fff; margin: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">{{ session.get('name', 'User') }}</p>
+            <p style="font-size: 0.7rem; color: #10b981; margin: 0; display: flex; align-items: center; gap: 4px; margin-top: 2px;">
+                <span style="display: inline-block; width: 6px; height: 6px; background: #10b981; border-radius: 50%; box-shadow: 0 0 5px #10b981;"></span> Online
+            </p>
+        </div>
+    </div>
+    <a href="/logout" class="text-muted flex" style="text-decoration: none; font-size: 0.85rem; padding: 8px 12px; transition: var(--transition); border-radius: 6px; border: 1px solid transparent;" onmouseover="this.style.background='rgba(255,0,0,0.1)'; this.style.color='#f87171';" onmouseout="this.style.background='transparent'; this.style.color='var(--text-muted)';">
+        <i data-lucide="log-out" style="width: 16px;"></i>
+        <span>Log Out System</span>
+    </a>
+</div>

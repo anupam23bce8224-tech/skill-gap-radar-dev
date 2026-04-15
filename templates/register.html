@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block auth_content %}
+<div class="glass-card p-8 animate-slide-up" style="width: 100%; max-width: 440px;">
+    <div class="text-center mb-8">
+        <h2 class="text-2xl mb-2">Register</h2>
+        <p class="text-muted text-sm">Skill Gap Radar Profile Creation</p>
+    </div>
+
+    {% if error %}
+    <div class="mb-4" style="padding: 10px 12px; border: 1px solid rgba(248, 113, 113, 0.35); background: rgba(248, 113, 113, 0.1); border-radius: 6px; color: #fca5a5; font-size: 0.9rem;">
+        {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="POST" action="/register" class="flex-col gap-6">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <div class="form-group">
+            <label class="text-muted block uppercase font-bold mb-2 text-sm" style="font-size: 0.85rem; letter-spacing: 1px;">Full Name</label>
+            <input type="text" name="name" class="glass-input p-4 w-full" placeholder="Your Name" required>
+        </div>
+        <div class="form-group">
+            <label class="text-muted block uppercase font-bold mb-2 text-sm" style="font-size: 0.85rem; letter-spacing: 1px;">Email Address</label>
+            <input type="email" name="email" class="glass-input p-4 w-full" placeholder="name@example.com" required>
+        </div>
+        <div class="form-group">
+            <label class="text-muted block uppercase font-bold mb-2 text-sm" style="font-size: 0.85rem; letter-spacing: 1px;">Password</label>
+            <input type="password" name="password" class="glass-input p-4 w-full" placeholder="••••••••" required>
+        </div>
+        <div class="form-group">
+            <label class="text-muted block uppercase font-bold mb-2 text-sm" style="font-size: 0.85rem; letter-spacing: 1px;">Profile Role</label>
+            <select name="role" class="glass-input p-4 w-full" style="background: rgba(0,0,0,0.8);">
+                <option value="student">Engineer / Professional</option>
+                <option value="teacher">Mentor / Auditor</option>
+            </select>
+        </div>
+        
+        <button type="submit" class="glass-btn glass-btn-primary w-full p-4 mt-2">
+            Create Profile
+        </button>
+    </form>
+    
+    <div class="mt-8 text-center border-t border-b-0 pt-6" style="border-top: 1px solid var(--border);">
+        <p class="text-muted text-sm">
+            Existing account? <a href="/login" class="text-accent font-semibold" style="text-decoration: none;">Sign in here</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

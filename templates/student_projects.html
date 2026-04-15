@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}
+    Available Projects - Skill Gap Radar
+{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <div class="header">
+        <h1 style="font-family: 'Syne', sans-serif; font-size: 2.8rem; letter-spacing: -2px; margin-bottom: 8px;">
+            Available Projects
+        </h1>
+        <p class="text-muted" style="max-width: 600px; font-size: 1.1rem;">
+            Browse faculty-posted projects and apply to those matching your skills.
+        </p>
+    </div>
+
+    <div id="projects-grid" class="projects-grid">
+        <p class="text-muted">Loading projects...</p>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        loadProjects();
+    });
+
+    async function loadProjects() {
+        const container = document.getElementById('projects-grid');
+        try {
+            console.log('[loadProjects] fetching...');
+            const response = await fetch('/student/projects');
+            console.log('[loadProjects] status:', response.status);
+            const res = await response.json();
+            console.log('[loadProjects] data:', res);
+
+            if (!res || !res.success) {
+                console.error('Failed to load projects:', res);
+                container.innerHTML = '<div class="error-state"><p>Could not load projects. Please refresh the page.</p></div>';
+                return;
+            }
+
+            const projects = Array.isArray(res.data) ? res.data : [];
+            if (projects.length === 0) {
+                container.innerHTML = '<div class="empty-state"><p>No projects available yet. Check back soon.</p></div>';
+                return;
+            }
+
+            container.innerHTML = projects.map(p => `
+            <div class="project-card glass-card" id="project-${p.id}">
+                <div class="flex justify-between items-start mb-3">
+                    <h4 style="font-size: 1.2rem; margin-bottom: 4px;">${escapeHtml(p.title)}</h4>
+                    ${p.applied ? getStatusBadge(p.status, p.match_score) : ''}
+                </div>
+                <p class="text-muted mb-3" style="font-size: 0.9rem;">${escapeHtml(p.description || 'No description provided.')}</p>
+                <div class="mb-3">
+                    <span class="text-muted" style="font-size: 0.75rem; text-transform: uppercase; font-weight: bold;">Required Skills:</span>
+                    <div style="margin-top: 6px;">
+                        ${p.required_skills.map(s => `<span class="skill-badge required">${escapeHtml(s)}</span>`).join('')}
+                    </div>
+                </div>
+                ${!p.applied ? `
+                    <button class="glass-btn glass-btn-primary w-full" onclick="toggleApplyForm(${p.id})">Apply</button>
+                    <div id="apply-form-${p.id}" class="apply-form" style="display: none; margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1);">
+                        <div class="form-group flex-col gap-2 mb-3">
+                            <label class="text-muted uppercase text-sm font-bold">Your Project Idea</label>
+                            <textarea id="idea-${p.id}" class="glass-input" rows="2" placeholder="Briefly describe your approach to this project..."></textarea>
+                        </div>
+                        <div class="form-group flex-col gap-2 mb-3">
+                            <label class="text-muted uppercase text-sm font-bold">Interest Statement</label>
+                            <textarea id="interest-${p.id}" class="glass-input" rows="2" placeholder="Why are you interested in this project?"></textarea>
+                        </div>
+                        <div id="apply-error-${p.id}" class="text-error mb-2" style="color: #f87171; font-size: 0.85rem; display: none;"></div>
+                        <div id="apply-success-${p.id}" class="mb-3" style="display: none;"></div>
+                        <div class="flex gap-2">
+                            <button class="glass-btn" onclick="toggleApplyForm(${p.id})">Cancel</button>
+                            <button class="glass-btn glass-btn-primary" onclick="submitApplication(${p.id})">Submit Application</button>
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+        `).join('');
+        } catch (err) {
+            console.error('[loadProjects] error:', err);
+            container.innerHTML = '<div class="error-state"><p>Could not load projects. Please refresh the page.</p></div>';
+        } finally {
+            // Hide loading spinner if one exists
+            const spinner = document.getElementById('loading-spinner');
+            if (spinner) {
+                spinner.style.display = 'none';
+            }
+        }
+    }
+
+    function getStatusBadge(status, matchScore) {
+        if (status === 'accepted') {
+            return `<span class="applied-badge" style="background: rgba(74, 222, 128, 0.1); color: #4ade80; border: 1px solid rgba(74,222,128,0.3);">🟢 You are selected</span>`;
+        } else if (status === 'rejected') {
+            return `<span class="applied-badge" style="background: rgba(248, 113, 113, 0.1); color: #f87171; border: 1px solid rgba(248,113,113,0.3);">🔴 Not selected</span>`;
+        } else {
+            return `<span class="applied-badge" style="background: rgba(251, 191, 36, 0.1); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3);">🟡 Under review</span>`;
+        }
+    }
+
+    function toggleApplyForm(projectId) {
+        const form = document.getElementById(`apply-form-${projectId}`);
+        form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    }
+
+    async function submitApplication(projectId) {
+        const idea = document.getElementById(`idea-${projectId}`).value.trim();
+        const interest = document.getElementById(`interest-${projectId}`).value.trim();
+        const errorDiv = document.getElementById(`apply-error-${projectId}`);
+        const successDiv = document.getElementById(`apply-success-${projectId}`);
+        
+        errorDiv.style.display = 'none';
+        successDiv.style.display = 'none';
+        
+        const res = await fetch(`/student/apply/${projectId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ project_idea: idea, interest_statement: interest })
+        });
+        
+        const data = await res.json();
+        
+        if (res.status === 409) {
+            errorDiv.textContent = data.error || 'You have already applied to this project';
+            errorDiv.style.display = 'block';
+            return;
+        }
+        
+        if (res.status === 400) {
+            errorDiv.textContent = data.error || 'Complete your skill analysis before applying';
+            errorDiv.style.display = 'block';
+            return;
+        }
+        
+        if (!res.ok) {
+            errorDiv.textContent = data.error || 'Failed to submit application';
+            errorDiv.style.display = 'block';
+            return;
+        }
+        
+        // Show success with match info
+        successDiv.innerHTML = `
+            <div style="background: rgba(74, 222, 128, 0.1); border: 1px solid rgba(74, 222, 128, 0.3); border-radius: 8px; padding: 12px;">
+                <div class="flex justify-between items-center mb-2">
+                    <span style="font-weight: bold; color: #4ade80;">Application Submitted!</span>
+                    <span style="font-size: 1.5rem; font-weight: bold; color: ${data.match_score >= 70 ? '#4ade80' : data.match_score >= 40 ? '#fbbf24' : '#f87171'};">${data.match_score}% Match</span>
+                </div>
+                <p style="font-style: italic; font-size: 0.85rem; color: var(--text-muted); margin: 0;">
+                    "${escapeHtml(data.match_reason)}"
+                </p>
+            </div>
+        `;
+        successDiv.style.display = 'block';
+        
+        // Hide form and update button after a delay
+        setTimeout(() => {
+            loadProjects();
+        }, 3000);
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+</script>
+{% endblock %}

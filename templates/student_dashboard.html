@@ -1,0 +1,1116 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {{ active|capitalize }} - Skill Gap Radar
+{% endblock %}
+
+{% block content %}
+<style>
+/* ── Student Dashboard Mobile Fixes ── */
+@media (max-width: 768px) {
+    /* Radar section: stacked */
+    #radar-section {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 16px !important;
+    }
+    /* Audit matrix inner grid */
+    #radar-section [style*="grid-template-columns: 1fr 1fr"] {
+        grid-template-columns: 1fr !important;
+    }
+    /* Career comparison row */
+    #career-content > div:last-child {
+        grid-template-columns: 1fr !important;
+    }
+    /* Roadmap header flex row */
+    .flex.justify-between.items-center[style*="border-bottom"] {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    /* Collab stats */
+    #collab-stats {
+        grid-template-columns: 1fr !important;
+    }
+    /* Analyze form */
+    form.grid.grid-2 {
+        grid-template-columns: 1fr !important;
+    }
+    /* Stats quick row */
+    .stats-grid {
+        grid-template-columns: 1fr 1fr !important;
+    }
+}
+@media (max-width: 480px) {
+    .stats-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+</style>
+<div class="dashboard" style="max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 32px;">
+    <!-- ── 1. HEADER (Clarity) ── -->
+    <div class="header" style="margin-bottom: 12px;">
+        <p class="text-accent uppercase font-bold mb-2" style="font-size: 0.85rem; letter-spacing: 0.15em;">Application / {{ active|capitalize }}</p>
+        <h1 style="font-family: 'Syne', sans-serif; font-size: 2.5rem; letter-spacing: -1.5px; margin-bottom: 4px;">
+            {% if active == 'dashboard' %}Dashboard
+            {% elif active == 'radar' %}Skill Analysis
+            {% elif active == 'roadmap' %}Learning Path
+            {% elif active == 'groups' %}Collaboration
+            {% elif active == 'discovery' %}Discovery
+            {% endif %}
+        </h1>
+    </div>
+
+    <!-- ── 2. PHASE 5: ANALYTICS DASHBOARD ── -->
+    {% if active == 'dashboard' %}
+    
+    <!-- Analytics Charts Section -->
+    <div class="analytics-section">
+        
+        <!-- 1. SKILL RADAR CHART -->
+        <div class="glass-card" style="padding: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="font-size: 1rem; text-transform: uppercase; letter-spacing: 1px;">Skill Distribution</h3>
+                <span class="text-muted" style="font-size: 0.75rem;">by Domain</span>
+            </div>
+            <div style="position: relative; height: 250px;">
+                <canvas id="skillRadarChart"></canvas>
+            </div>
+            <div id="radar-loading" class="text-center text-muted" style="padding: 60px 0;">Loading...</div>
+        </div>
+        
+        <!-- 2. PROGRESS GRAPH -->
+        <div class="glass-card" style="padding: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="font-size: 1rem; text-transform: uppercase; letter-spacing: 1px;">Learning Growth</h3>
+                <span class="text-muted" style="font-size: 0.75rem;">over time</span>
+            </div>
+            <div style="position: relative; height: 250px;">
+                <canvas id="progressChart"></canvas>
+            </div>
+            <div id="progress-loading" class="text-center text-muted" style="padding: 60px 0;">Loading...</div>
+        </div>
+        
+        <!-- 3. MATCH TREND -->
+        <div class="glass-card" style="padding: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="font-size: 1rem; text-transform: uppercase; letter-spacing: 1px;">Job Readiness</h3>
+                <span class="text-muted" style="font-size: 0.75rem;">impact</span>
+            </div>
+            <div id="match-trend-content">
+                <div id="match-delta" style="text-align: center; padding: 30px 0;">
+                    <div id="delta-value" style="font-size: 3.5rem; font-weight: bold; color: #4ade80;">+0%</div>
+                    <p class="text-muted" style="font-size: 0.85rem; margin-top: 8px;">improvement</p>
+                </div>
+                <div style="position: relative; height: 120px;">
+                    <canvas id="matchTrendChart"></canvas>
+                </div>
+                <div id="trend-loading" class="text-center text-muted" style="padding: 20px 0; display: none;">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats Row -->
+    <div class="stats-grid" style="margin-top: 24px;">
+        <div class="glass-card" style="text-align: center; padding: 20px;">
+            <p class="text-muted uppercase font-bold mb-2" style="font-size: 0.75rem; letter-spacing: 1px;">Total Analyses</p>
+            <h2 id="stat-analysis-count" style="font-size: 2rem; color: var(--accent);">-</h2>
+        </div>
+        <div class="glass-card" style="text-align: center; padding: 20px;">
+            <p class="text-muted uppercase font-bold mb-2" style="font-size: 0.75rem; letter-spacing: 1px;">Current Score</p>
+            <h2 id="stat-current-score" style="font-size: 2rem; color: #4ade80;">-</h2>
+        </div>
+        <div class="glass-card" style="text-align: center; padding: 20px;">
+            <p class="text-muted uppercase font-bold mb-2" style="font-size: 0.75rem; letter-spacing: 1px;">Skills Verified</p>
+            <h2 id="stat-skills-verified" style="font-size: 2rem; color: #8b5cf6;">-</h2>
+        </div>
+        <div class="glass-card" style="text-align: center; padding: 20px;">
+            <p class="text-muted uppercase font-bold mb-2" style="font-size: 0.75rem; letter-spacing: 1px;">Gaps Remaining</p>
+            <h2 id="stat-gaps" style="font-size: 2rem; color: #f87171;">-</h2>
+        </div>
+    </div>
+
+    <!-- ── 3. MAIN & SUPPORTING (Symmetry) ── -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 24px;">
+        <div class="glass-card flex-col" style="display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+                <h3 class="mb-2">Skill Analysis</h3>
+                <p class="text-muted" style="font-size: 0.95rem;">Upload your resume or connect GitHub to evaluate your skills against your target role.</p>
+            </div>
+            <div class="flex mt-8">
+                <a href="/radar" class="glass-btn glass-btn-primary" style="width: 100%;">Start Skill Analysis</a>
+            </div>
+        </div>
+
+        <div class="glass-card" style="display: flex; flex-direction: column; justify-content: space-between;">
+             <div>
+                <h3 class="mb-2">Learning Path</h3>
+                <p class="text-muted" style="font-size: 0.95rem;">Follow a step-by-step plan to close skill gaps and build your target engineering stack.</p>
+            </div>
+            <div class="flex mt-8">
+                <a href="/roadmap" class="glass-btn" style="width: 100%;">Open Learning Path</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="glass-card">
+        <h3 class="mb-6 flex">
+            <i data-lucide="activity" style="width: 18px;"></i>
+            Verified Skills
+        </h3>
+        <div id="activity-feed" style="display: flex; flex-wrap: wrap; gap: 10px;">
+             {% if analysis and analysis.matched %}
+                 {% for skill, info in analysis.matched.items() %}
+                 <div data-skill-chip="true" style="padding: 10px 16px; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px solid var(--border); display: flex; align-items: center; gap: 10px;">
+                     <div style="width: 8px; height: 8px; background: #4ade80; border-radius: 50%; flex-shrink:0; box-shadow: 0 0 8px #4ade80;"></div>
+                     <span class="font-bold" style="font-size: 0.9rem; text-transform: capitalize;">{{ skill }}</span>
+                     <span style="font-size: 0.75rem; color: var(--accent); background: rgba(0,245,255,0.08); padding: 2px 8px; border-radius: 10px;">{{ (info.confidence * 100) | round | int }}%</span>
+                     {% if info.source == 'resume+github' %}
+                     <span style="font-size: 0.7rem; color: #a78bfa; background: rgba(167,139,250,0.1); padding: 2px 8px; border-radius: 10px;">GitHub ✓</span>
+                     {% elif info.source == 'github' %}
+                     <span style="font-size: 0.7rem; color: #60a5fa; background: rgba(96,165,250,0.1); padding: 2px 8px; border-radius: 10px;">GitHub</span>
+                     {% endif %}
+                 </div>
+                 {% endfor %}
+             {% else %}
+                 <div id="activity-empty" class="text-muted" style="padding: 16px; border: 1px dashed var(--border); border-radius: 8px; width: 100%; text-align: center;">No verified skills yet. Run Skill Analysis to generate your verified stack.</div>
+             {% endif %}
+        </div>
+    </div>
+
+    <!-- ── PHASE 6: CAREER INTELLIGENCE ── -->
+    <div class="glass-card" style="margin-top: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+            <div>
+                <h3 style="display: flex; align-items: center; gap: 12px;">
+                    <i data-lucide="compass" style="width: 20px; color: #a78bfa;"></i>
+                    Career Intelligence
+                </h3>
+                <p class="text-muted" style="font-size: 0.85rem; margin-top: 4px;">Discover your ideal career path based on verified skills</p>
+            </div>
+            <div id="career-best-fit" style="display: none; text-align: right;">
+                <span class="text-muted" style="font-size: 0.75rem; text-transform: uppercase;">Best Fit</span>
+                <div id="best-fit-role" style="font-size: 1.2rem; font-weight: bold; color: #a78bfa;">-</div>
+            </div>
+        </div>
+
+        <div id="career-empty" style="padding: 40px; text-align: center; border: 1px dashed var(--border); border-radius: 12px;">
+            <i data-lucide="briefcase" style="width: 48px; height: 48px; color: var(--text-muted); margin-bottom: 16px;"></i>
+            <h4 style="margin-bottom: 8px;">No Career Data Yet</h4>
+            <p class="text-muted" style="font-size: 0.9rem; margin-bottom: 16px;">Complete a skill analysis to get personalized career suggestions</p>
+            <a href="/radar" class="glass-btn glass-btn-primary">Analyze Skills</a>
+        </div>
+
+        <div id="career-content" style="display: none;">
+            <!-- Top Suggestions -->
+            <div id="career-suggestions" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                <!-- Populated by JS -->
+            </div>
+
+            <!-- Comparison Chart -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start;">
+                <div>
+                    <h4 style="font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px;">Role Comparison</h4>
+                    <div style="position: relative; height: 250px;">
+                        <canvas id="careerChart"></canvas>
+                    </div>
+                </div>
+                <div>
+                    <h4 style="font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px;">Recommended Action</h4>
+                    <div id="career-recommendation" style="padding: 20px; background: rgba(167, 139, 250, 0.05); border: 1px solid rgba(167, 139, 250, 0.2); border-radius: 12px;">
+                        <p class="text-muted" style="font-size: 0.9rem; line-height: 1.6;">Based on your skill profile, we recommend focusing on <strong id="rec-role" style="color: #a78bfa;">-</strong>. Your strongest areas are <span id="rec-strengths">-</span>.</p>
+                        <div style="margin-top: 16px;">
+                            <button onclick="selectCareerRole()" class="glass-btn glass-btn-primary" style="width: 100%;">Select This Role</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="career-loading" style="display: none; padding: 40px; text-align: center;">
+            <p class="text-muted">Analyzing career matches...</p>
+        </div>
+    </div>
+
+    <!-- ── RADAR SCAN ── -->
+    {% elif active == 'radar' %}
+    <div style="display: flex; flex-direction: column; gap: 24px; align-items: center; width: 100%;">
+        <div class="glass-card w-full" style="max-width: 900px;">
+            <h3 class="mb-6">Upload Documentation</h3>
+            <form action="/analyze" method="POST" enctype="multipart/form-data" class="grid grid-2 gap-6" style="gap: 24px;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="form-group flex-col" style="grid-column: 1 / -1; display: flex; flex-direction: column; gap: 8px;">
+                     <label class="text-muted uppercase font-bold" style="font-size: 0.85rem; letter-spacing: 0.05em;">GitHub Username</label>
+                     <input type="text" name="github_user" class="glass-input" placeholder="torvalds">
+                </div>
+                <div class="form-group flex-col" style="display: flex; flex-direction: column; gap: 8px;">
+                    <label class="text-muted uppercase font-bold" style="font-size: 0.85rem; letter-spacing: 0.05em;">Resume PDF</label>
+                    <input type="file" name="resume" class="glass-input" accept=".pdf">
+                </div>
+                <div class="form-group flex-col" style="display: flex; flex-direction: column; gap: 8px;">
+                    <label class="text-muted uppercase font-bold" style="font-size: 0.85rem; letter-spacing: 0.05em;">Target Role</label>
+                    <select name="goal_role" class="glass-input">
+                        <option value="Web Developer" {% if analysis and analysis.role == 'Web Developer' %}selected{% endif %}>Web Developer</option>
+                        <option value="Frontend Engineer" {% if analysis and analysis.role == 'Frontend Engineer' %}selected{% endif %}>Frontend Engineer</option>
+                        <option value="Backend Developer" {% if analysis and analysis.role == 'Backend Developer' %}selected{% endif %}>Backend Developer</option>
+                        <option value="Data Scientist" {% if analysis and analysis.role == 'Data Scientist' %}selected{% endif %}>Data Scientist</option>
+                        <option value="ML Engineer" {% if analysis and analysis.role == 'ML Engineer' %}selected{% endif %}>ML Engineer</option>
+                    </select>
+                </div>
+                <button type="submit" class="glass-btn glass-btn-primary" style="grid-column: 1 / -1; padding: 14px;">
+                    Execute Analysis
+                </button>
+            </form>
+        </div>
+
+        {% if analysis %}
+        <div id="radar-section" class="w-full" style="max-width: 900px;">
+             <div class="glass-card text-center" style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                 <h4 class="mb-8 uppercase text-muted font-bold" style="font-size: 0.95rem; letter-spacing: 1px;">Radar Matrix</h4>
+                 <div style="width: 100%; max-width: 320px;">
+                    <canvas id="skillRadar"></canvas>
+                 </div>
+                 <h2 id="match-pct" style="font-size: 3rem; margin-top: 24px; color: #fff;">{{ analysis.match_score | round | int }}%</h2>
+                 <p class="text-muted">Compatibility Score</p>
+             </div>
+             
+             <div id="radar-details" style="height: 100%;">
+                <div class="glass-card" style="height: 100%;">
+                    <h4 class="mb-6 uppercase text-muted font-bold" style="font-size: 0.95rem; letter-spacing: 1px;">Audit Matrix</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div class="flex-col">
+                            <p class="text-muted uppercase text-xs font-bold mb-2">Verified Stack</p>
+                            <div id="verified-stack" style="display: flex; flex-direction: column; gap: 8px;">
+                                {% if analysis.matched_skills %}
+                                    {% for skill in analysis.matched_skills %}
+                                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: rgba(255,255,255,0.01); border: 1px solid var(--border); border-radius: 8px;">
+                                        <span style="font-size: 0.85rem; font-weight: 600; text-transform: capitalize;">{{ skill }}</span>
+                                        <span style="font-size: 0.75rem; color: #4ade80; font-weight: bold;">100%</span>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div style="padding: 12px; background: rgba(255,255,255,0.01); border: 1px dashed var(--border); border-radius: 8px; text-align: center;"><span class="text-muted text-sm">No confirmed skills</span></div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="flex-col">
+                            <p class="text-muted uppercase text-xs font-bold mb-2">Gaps Identified</p>
+                            <div id="gap-stack" style="display: flex; flex-direction: column; gap: 8px;">
+                                {% if analysis.missing_skills %}
+                                    {% for skill in analysis.missing_skills %}
+                                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: rgba(255,255,255,0.01); border: 1px solid var(--border); border-radius: 8px;">
+                                        <span style="font-size: 0.85rem; font-weight: 600; text-transform: capitalize;">{{ skill }}</span>
+                                        <span style="font-size: 0.75rem; color: #f87171; font-weight: bold;">0%</span>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div style="padding: 12px; background: rgba(255,255,255,0.01); border: 1px dashed var(--border); border-radius: 8px; text-align: center;"><span class="text-muted text-sm">No gaps detected</span></div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+             </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- ── ROADMAP ── -->
+    {% elif active == 'roadmap' %}
+    <div style="display: flex; flex-direction: column; gap: 32px;">
+        {% if analysis and analysis.roadmap %}
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 20px;">
+            <div>
+                <h3 style="font-size: 1.8rem; margin: 0;">Roadmap: <span class="text-accent">{{ analysis.role }}</span></h3>
+                <p class="text-muted" style="margin-top: 4px; font-size: 0.9rem;">{{ analysis.match_score | round(1) }}% match · {{ analysis.missing_required | length }} critical gaps</p>
+            </div>
+            <div style="display:flex; align-items:center; gap: 12px;">
+                <span class="text-muted" style="font-size:0.8rem;">Switch Role</span>
+                <select id="switch_role_select" class="glass-input" style="width: 200px;" onchange="switchRole(this.value)">
+                    <option value="Web Developer" {% if analysis.role == 'Web Developer' %}selected{% endif %}>Web Developer</option>
+                    <option value="Backend Developer" {% if analysis.role == 'Backend Developer' %}selected{% endif %}>Backend Developer</option>
+                    <option value="ML Engineer" {% if analysis.role == 'ML Engineer' %}selected{% endif %}>ML Engineer</option>
+                    <option value="Data Scientist" {% if analysis.role == 'Data Scientist' %}selected{% endif %}>Data Scientist</option>
+                </select>
+            </div>
+        </div>
+
+        {% for phase_name, steps in analysis.roadmap.phases.items() %}
+        {% if steps %}
+        <div>
+            <h4 class="text-accent mb-4" style="font-size:1rem; letter-spacing: 0.5px;">{{ phase_name }}</h4>
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+                {% for step in steps %}
+                <div class="glass-card flex items-center" style="border-left: 4px solid {% if step.priority == 'critical' %}#f87171{% elif step.priority == 'high' %}#fb923c{% elif step.priority == 'medium' %}var(--accent){% else %}#a78bfa{% endif %}; padding: 18px; gap: 18px;">
+                    <div style="flex-shrink:0; width: 40px; height: 40px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 50%; display:flex; align-items:center; justify-content:center;">
+                        <i data-lucide="{% if step.priority == 'critical' %}alert-circle{% elif step.priority == 'final' %}check-circle{% else %}circle{% endif %}" style="width:18px; color: {% if step.priority == 'critical' %}#f87171{% elif step.priority == 'final' %}#4ade80{% else %}var(--text-muted){% endif %};"></i>
+                    </div>
+                    <div style="flex:1;">
+                        <h5 style="text-transform:capitalize; margin-bottom:4px;">{{ step.action }}</h5>
+                        <p class="text-muted" style="font-size:0.85rem; margin:0;">{{ step.outcome }}</p>
+                    </div>
+                    <span style="flex-shrink:0; font-size:0.75rem; padding: 4px 10px; border-radius: 10px; font-weight:700;
+                        {% if step.priority == 'critical' %}background:rgba(248,113,113,0.1); color:#f87171;{% elif step.priority == 'final' %}background:rgba(74,222,128,0.1); color:#4ade80;{% else %}background:rgba(255,255,255,0.05); color:var(--text-muted);{% endif %}">
+                        {{ step.priority | upper }}
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+
+        {% else %}
+            <div class="glass-card" style="text-align:center; padding: 60px;">
+                <i data-lucide="milestone" class="text-accent" style="width:48px; height:48px; margin: 0 auto 16px;"></i>
+                <h3>Run a Skill Analysis First</h3>
+                <p class="text-muted mt-2">Your personalized learning roadmap will appear here after your first analysis.</p>
+                <a href="/radar" class="glass-btn glass-btn-primary" style="display:inline-flex; margin: 24px auto 0;">Start Analysis</a>
+            </div>
+        {% endif %}
+    </div>
+    <!-- ── COLLABORATION (GROUPS) ── -->
+    {% elif active == 'groups' %}
+    <div class="flex-col gap-6">
+        <div class="glass-card mb-6 flex justify-between items-center">
+            <div>
+                <h3>My Project Collaborations</h3>
+                <p class="text-muted mt-2">Track your project applications and active collaborations with faculty mentors.</p>
+            </div>
+            <a href="/discovery" class="glass-btn glass-btn-primary">Discover Projects</a>
+        </div>
+
+        <!-- Stats Row -->
+        <div class="stats-grid" id="collab-stats">
+            <div class="glass-card" style="border-bottom: 3px solid #fbbf24;">
+                <div class="text-muted font-bold uppercase mb-2" style="font-size: 0.85rem; letter-spacing: 0.1em">Pending</div>
+                <h2 style="font-size: 2.5rem; color: #fbbf24;" id="stat-pending">-</h2>
+            </div>
+            <div class="glass-card" style="border-bottom: 3px solid #4ade80;">
+                <div class="text-muted font-bold uppercase mb-2" style="font-size: 0.85rem; letter-spacing: 0.1em">Accepted</div>
+                <h2 style="font-size: 2.5rem; color: #4ade80;" id="stat-accepted-collab">-</h2>
+            </div>
+            <div class="glass-card" style="border-bottom: 3px solid #f87171;">
+                <div class="text-muted font-bold uppercase mb-2" style="font-size: 0.85rem; letter-spacing: 0.1em">Rejected</div>
+                <h2 style="font-size: 2.5rem; color: #f87171;" id="stat-rejected">-</h2>
+            </div>
+        </div>
+
+        <div id="my-collaborations-grid" class="grid grid-auto gap-6 mt-4">
+            <div class="glass-card text-center py-12" style="grid-column: 1/-1;">
+                <p class="text-muted">Loading your collaborations...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── DISCOVERY NETWORK ── -->
+    {% elif active == 'discovery' %}
+    <div class="flex-col gap-6">
+        <div class="glass-card mb-6">
+            <h3 class="mb-2">Discovery Network</h3>
+            <p class="text-muted">Explore active peer cohorts. Join projects corresponding with your learning path trajectory.</p>
+        </div>
+        
+        <div id="discovery-grid" class="grid grid-auto gap-6 mt-4">
+            <p class="text-muted">Interfacing with available engineering networks...</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // ==================== UTILITY FUNCTIONS ====================
+    function escapeHtml(text) {
+        if (!text || typeof text !== 'string') return "";
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return text.replace(/[&<>"']/g, m => map[m]);
+    }
+
+    let radarChart = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        lucide.createIcons();
+        {% if active == 'groups' %} loadStudentGroups();
+        {% elif active == 'discovery' %} loadDiscovery();
+        {% elif active == 'dashboard' %} loadAnalytics();
+        {% endif %}
+        
+        // Initialize Chart.js Radar using Python variables natively injected
+        {% if analysis %}
+        const analysisData = {{ analysis | tojson | safe }};
+        {% else %}
+        const analysisData = null;
+        {% endif %}
+        
+        if (analysisData && document.getElementById('skillRadar')) {
+            const labels = [...analysisData.matched_skills, ...analysisData.missing_skills].map(s => s.toUpperCase());
+            const values = [...analysisData.matched_skills.map(()=>100), ...analysisData.missing_skills.map(()=>0)];
+
+            const ctx = document.getElementById('skillRadar').getContext('2d');
+            radarChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        fill: true,
+                        backgroundColor: 'rgba(0, 245, 255, 0.05)',
+                        borderColor: '#00f5ff',
+                        pointBackgroundColor: '#00f5ff',
+                        pointBorderWidth: 0,
+                        pointRadius: 2
+                    }]
+                },
+                options: {
+                    scales: { 
+                        r: { 
+                            suggestedMin: 0, 
+                            suggestedMax: 100, 
+                            ticks: {display: false}, 
+                            grid: { color: 'rgba(255,255,255,0.1)' }, 
+                            pointLabels: { color: '#ffffff', font: {family: 'Inter', size: 10, weight: 'bold'} } 
+                        } 
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+    });
+
+    // ==================== PHASE 5: ANALYTICS ====================
+    const DEBUG = false;  // set to true locally during development
+
+    async function loadAnalytics() {
+        try {
+            if (DEBUG) console.log('[Analytics] Loading dashboard data...');
+            const res = await fetch('/user/analytics');
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            
+            const data = await res.json();
+            if (DEBUG) console.log('[Analytics] Data loaded:', data);
+            
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            
+            // Update stats
+            document.getElementById('stat-analysis-count').textContent = data.stats?.analysis_count || 0;
+            document.getElementById('stat-current-score').textContent = data.stats?.total_score || 0;
+            document.getElementById('stat-skills-verified').textContent = data.stats?.matched_skills_count || 0;
+            document.getElementById('stat-gaps').textContent = data.stats?.missing_skills_count || 0;
+
+            // Keep "Verified Skills" panel in sync with analytics when session analysis is absent
+            const activityFeed = document.getElementById('activity-feed');
+            const hasSkillChips = activityFeed?.querySelector('[data-skill-chip="true"]');
+            const verifiedCount = data.stats?.matched_skills_count || 0;
+            if (activityFeed && !hasSkillChips) {
+                if (verifiedCount > 0) {
+                    activityFeed.innerHTML = `
+                        <div class="text-muted" style="padding: 16px; border: 1px dashed var(--border); border-radius: 8px; width: 100%; text-align: center;">
+                            ${verifiedCount} skills verified in your latest analysis. Open <a href="/radar" style="color: var(--accent); text-decoration: none; font-weight: 600;">Skill Analysis</a> to view full details.
+                        </div>
+                    `;
+                } else {
+                    activityFeed.innerHTML = `
+                        <div class="text-muted" style="padding: 16px; border: 1px dashed var(--border); border-radius: 8px; width: 100%; text-align: center;">
+                            No verified skills yet. Run Skill Analysis to generate your verified stack.
+                        </div>
+                    `;
+                }
+            }
+            
+            // 1. Render Skill Radar Chart
+            if (data.radar && Object.keys(data.radar).length > 0) {
+                renderSkillRadar(data.radar);
+            } else {
+                document.getElementById('skillRadarChart').parentElement.innerHTML = '<div class="text-muted text-center" style="padding: 80px 20px;">No radar analytics available yet.</div>';
+            }
+            document.getElementById('radar-loading').style.display = 'none';
+            
+            // 2. Render Progress Graph
+            if (Array.isArray(data.progress) && data.progress.length > 0) {
+                renderProgressChart(data.progress);
+            } else {
+                document.getElementById('progressChart').parentElement.innerHTML = '<div class="text-muted text-center" style="padding: 80px 20px;">Run a skill analysis to view your learning progress.</div>';
+            }
+            document.getElementById('progress-loading').style.display = 'none';
+            
+            // 3. Render Match Trend
+            if (data.match_trend && typeof data.match_trend === 'object') {
+                renderMatchTrend(data.match_trend);
+            } else {
+                document.getElementById('delta-value').textContent = '0%';
+            }
+            document.getElementById('trend-loading').style.display = 'none';
+            
+            // 4. Load Career Intelligence (Phase 6)
+            await loadCareerData();
+            
+        } catch (error) {
+            console.error('[Analytics] Error:', error);
+            document.getElementById('radar-loading').textContent = 'Failed to load analytics.';
+            document.getElementById('progress-loading').textContent = 'Failed to load analytics.';
+            document.getElementById('trend-loading').textContent = 'Failed to load analytics.';
+        }
+    }
+
+    function renderSkillRadar(radarData) {
+        const ctx = document.getElementById('skillRadarChart');
+        if (!ctx || !radarData || typeof radarData !== 'object' || Object.keys(radarData).length === 0) return;
+        
+        const labels = Object.keys(radarData).map(k => k.charAt(0).toUpperCase() + k.slice(1));
+        const values = Object.values(radarData);
+        
+        new Chart(ctx, {
+            type: 'radar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Skill Score',
+                    data: values,
+                    fill: true,
+                    backgroundColor: 'rgba(0, 245, 255, 0.15)',
+                    borderColor: '#00f5ff',
+                    borderWidth: 2,
+                    pointBackgroundColor: '#00f5ff',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 1,
+                    pointRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    r: {
+                        suggestedMin: 0,
+                        suggestedMax: 100,
+                        ticks: {
+                            display: false,
+                            stepSize: 20
+                        },
+                        grid: {
+                            color: 'rgba(255,255,255,0.08)'
+                        },
+                        angleLines: {
+                            color: 'rgba(255,255,255,0.05)'
+                        },
+                        pointLabels: {
+                            color: 'rgba(255,255,255,0.8)',
+                            font: { size: 10, weight: '600' }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+
+    function renderProgressChart(progressData) {
+        const ctx = document.getElementById('progressChart');
+        if (!ctx || !Array.isArray(progressData)) return;
+        
+        if (progressData.length < 2) {
+            ctx.parentElement.innerHTML = '<div class="text-muted text-center" style="padding: 80px 20px;"><i data-lucide="trending-up" style="width: 32px; margin-bottom: 8px;"></i><p>Run multiple analyses to see your growth trend</p></div>';
+            lucide.createIcons();
+            return;
+        }
+        
+        const labels = progressData.map(p => {
+            const date = new Date(p.date);
+            return `${date.getMonth()+1}/${date.getDate()}`;
+        });
+        const values = progressData.map(p => p.score);
+        
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Skill Score',
+                    data: values,
+                    borderColor: '#4ade80',
+                    backgroundColor: 'rgba(74, 222, 128, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointBackgroundColor: '#4ade80',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointRadius: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        suggestedMin: 0,
+                        suggestedMax: Math.max(...values) + 10,
+                        ticks: {
+                            color: 'rgba(255,255,255,0.5)',
+                            font: { size: 10 }
+                        },
+                        grid: {
+                            color: 'rgba(255,255,255,0.05)'
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            color: 'rgba(255,255,255,0.5)',
+                            font: { size: 10 }
+                        },
+                        grid: {
+                            display: false
+                        }
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+
+    function renderMatchTrend(trendData) {
+        const ctx = document.getElementById('matchTrendChart');
+        if (!ctx) return;
+        
+        // Update delta display
+        const deltaEl = document.getElementById('delta-value');
+        const improvement = trendData.improvement || 0;
+        deltaEl.textContent = (improvement >= 0 ? '+' : '') + improvement + '%';
+        deltaEl.style.color = improvement >= 0 ? '#4ade80' : '#f87171';
+        
+        // Render bar chart
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Before', 'After'],
+                datasets: [{
+                    data: [trendData.before || 0, trendData.after || 0],
+                    backgroundColor: ['rgba(251, 191, 36, 0.5)', 'rgba(74, 222, 128, 0.7)'],
+                    borderColor: ['#fbbf24', '#4ade80'],
+                    borderWidth: 2,
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        suggestedMin: 0,
+                        suggestedMax: Math.max(trendData.after, trendData.before, 100),
+                        ticks: {
+                            color: 'rgba(255,255,255,0.5)',
+                            font: { size: 10 }
+                        },
+                        grid: {
+                            color: 'rgba(255,255,255,0.05)'
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            color: 'rgba(255,255,255,0.7)',
+                            font: { size: 11, weight: '600' }
+                        },
+                        grid: {
+                            display: false
+                        }
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+
+    // ==================== PHASE 6: CAREER INTELLIGENCE ====================
+    async function loadCareerData() {
+        const emptyEl = document.getElementById('career-empty');
+        const contentEl = document.getElementById('career-content');
+        const loadingEl = document.getElementById('career-loading');
+        const bestFitEl = document.getElementById('career-best-fit');
+        
+        try {
+            loadingEl.style.display = 'block';
+            emptyEl.style.display = 'none';
+            
+            const res = await fetch('/career/compare');
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            
+            const data = await res.json();
+            if (DEBUG) console.log('[Career] Data loaded:', data);
+            
+            if (!data.user_skill_count || data.user_skill_count === 0) {
+                loadingEl.style.display = 'none';
+                emptyEl.style.display = 'block';
+                return;
+            }
+            
+            // Hide loading, show content
+            loadingEl.style.display = 'none';
+            contentEl.style.display = 'block';
+            bestFitEl.style.display = 'block';
+            
+            // Update best fit
+            if (data.best_fit) {
+                document.getElementById('best-fit-role').textContent = data.best_fit.role;
+                document.getElementById('rec-role').textContent = data.best_fit.role;
+                document.getElementById('rec-strengths').textContent = data.best_fit.matched_skills.slice(0, 3).join(', ');
+            }
+            
+            // Render suggestions
+            renderCareerSuggestions(data.suggested);
+            
+            // Render comparison chart
+            renderCareerChart(data.all_roles);
+            
+        } catch (error) {
+            console.error('[Career] Error:', error);
+            loadingEl.style.display = 'none';
+            emptyEl.style.display = 'block';
+            emptyEl.innerHTML = `
+                <i data-lucide="alert-circle" style="width: 48px; height: 48px; color: #f87171; margin-bottom: 16px;"></i>
+                <h4 style="margin-bottom: 8px;">Failed to Load</h4>
+                <p class="text-muted" style="font-size: 0.9rem; margin-bottom: 16px;">${error.message}</p>
+                <button onclick="loadCareerData()" class="glass-btn">Retry</button>
+            `;
+            lucide.createIcons();
+        }
+    }
+
+    function renderCareerSuggestions(suggestions) {
+        const container = document.getElementById('career-suggestions');
+        
+        const colors = [
+            { bg: 'rgba(167, 139, 250, 0.15)', border: '#a78bfa', text: '#a78bfa' },
+            { bg: 'rgba(0, 245, 255, 0.15)', border: '#00f5ff', text: '#00f5ff' },
+            { bg: 'rgba(74, 222, 128, 0.15)', border: '#4ade80', text: '#4ade80' }
+        ];
+        
+        container.innerHTML = suggestions.map((s, i) => {
+            const color = colors[i] || colors[0];
+            return `
+                <div style="padding: 20px; background: ${color.bg}; border: 1px solid ${color.border}; border-radius: 12px; text-align: center;">
+                    <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;">#${i + 1} Match</div>
+                    <h4 style="font-size: 1.1rem; margin-bottom: 8px; color: ${color.text};">${escapeHtml(s.role)}</h4>
+                    <div style="font-size: 2rem; font-weight: bold; margin-bottom: 8px;">${s.score}%</div>
+                    <p class="text-muted" style="font-size: 0.8rem; line-height: 1.4;">${escapeHtml(s.description)}</p>
+                    <div style="margin-top: 12px; display: flex; flex-wrap: wrap; gap: 4px; justify-content: center;">
+                        ${s.matched_skills.slice(0, 3).map(skill => `
+                            <span style="font-size: 0.7rem; padding: 2px 8px; background: rgba(255,255,255,0.1); border-radius: 10px;">${escapeHtml(skill)}</span>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function renderCareerChart(allRoles) {
+        const ctx = document.getElementById('careerChart');
+        if (!ctx) return;
+        
+        // Get top 5 roles for cleaner chart
+        const topRoles = allRoles.slice(0, 5);
+        
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: topRoles.map(r => r.role),
+                datasets: [{
+                    label: 'Match %',
+                    data: topRoles.map(r => r.score),
+                    backgroundColor: topRoles.map((r, i) => {
+                        if (i === 0) return 'rgba(167, 139, 250, 0.8)';
+                        if (i === 1) return 'rgba(0, 245, 255, 0.7)';
+                        if (i === 2) return 'rgba(74, 222, 128, 0.6)';
+                        return 'rgba(255, 255, 255, 0.2)';
+                    }),
+                    borderColor: topRoles.map((r, i) => {
+                        if (i === 0) return '#a78bfa';
+                        if (i === 1) return '#00f5ff';
+                        if (i === 2) return '#4ade80';
+                        return 'rgba(255, 255, 255, 0.4)';
+                    }),
+                    borderWidth: 2,
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                scales: {
+                    x: {
+                        suggestedMin: 0,
+                        suggestedMax: 100,
+                        ticks: {
+                            color: 'rgba(255,255,255,0.5)',
+                            font: { size: 10 }
+                        },
+                        grid: {
+                            color: 'rgba(255,255,255,0.05)'
+                        }
+                    },
+                    y: {
+                        ticks: {
+                            color: 'rgba(255,255,255,0.8)',
+                            font: { size: 11, weight: '600' }
+                        },
+                        grid: {
+                            display: false
+                        }
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+
+    // csrfToken is already defined in base.html
+
+    async function selectCareerRole() {
+        const role = document.getElementById('rec-role').textContent;
+        if (!role || role === '-') return;
+        
+        try {
+            const formData = new FormData();
+            formData.append('new_role', role);
+            formData.append('csrf_token', csrfToken);
+            
+            const res = await fetch('/switch-role', { method: 'POST', body: formData });
+            const data = await res.json();
+            
+            if (data.success) {
+                alert(`Career role updated to: ${role}. Your roadmap has been regenerated!`);
+                window.location.reload();
+            } else {
+                alert('Failed to update role. Please try again.');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Error updating role.');
+        }
+    }
+
+    async function switchRole(newRole) {
+        const formData = new FormData();
+        formData.append("new_role", newRole);
+        formData.append('csrf_token', csrfToken);
+        
+        try {
+            const res = await fetch("/switch-role", { method: "POST", body: formData });
+            const data = await res.json();
+            if(data.success) {
+                window.location.reload(); // Reload context to let Jinja rebuild roadmap natively
+            } else {
+                alert("Failed to switch role.");
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    async function loadStudentGroups() {
+        const grid = document.getElementById('my-collaborations-grid');
+        grid.innerHTML = '<div class="glass-card text-center py-12" style="grid-column: 1/-1;"><p class="text-muted">Loading your collaborations...</p></div>';
+        
+        try {
+            if (DEBUG) console.log('[Collaboration] Fetching projects from /student/projects...');
+            const res = await fetch('/student/projects');
+            
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+            }
+            
+            const json = await res.json();
+            if (DEBUG) console.log('[Collaboration] Projects loaded:', json);
+            
+            // Handle wrapped response {success, data: {projects: [...]}} or bare array
+            const projects = json.data?.projects || json.projects || (Array.isArray(json) ? json : null);
+            if (!projects) {
+                throw new Error(json.error || 'Invalid response format');
+            }
+            
+            // Filter to only applied projects
+            const appliedProjects = projects.filter(p => p.applied);
+            
+            // Update stats
+            const pending = appliedProjects.filter(p => p.status === 'pending').length;
+            const accepted = appliedProjects.filter(p => p.status === 'accepted').length;
+            const rejected = appliedProjects.filter(p => p.status === 'rejected').length;
+            
+            document.getElementById('stat-pending').textContent = pending;
+            document.getElementById('stat-accepted-collab').textContent = accepted;
+            document.getElementById('stat-rejected').textContent = rejected;
+            
+            if (appliedProjects.length === 0) {
+                grid.innerHTML = `
+                    <div class="glass-card text-center py-16" style="grid-column: 1/-1;">
+                        <i data-lucide="briefcase" style="width: 64px; height: 64px; color: var(--text-muted); margin-bottom: 16px;"></i>
+                        <h3 class="mb-2">No Active Collaborations</h3>
+                        <p class="text-muted mb-4">You haven't applied to any projects yet.</p>
+                        <a href="/discovery" class="glass-btn glass-btn-primary">Explore Projects</a>
+                    </div>
+                `;
+                lucide.createIcons();
+                return;
+            }
+            
+            // Sort by status: pending first, then accepted, then rejected
+            appliedProjects.sort((a, b) => {
+                const statusOrder = { pending: 0, accepted: 1, rejected: 2 };
+                return (statusOrder[a.status] || 0) - (statusOrder[b.status] || 0);
+            });
+            
+            grid.innerHTML = appliedProjects.map(p => {
+                const pStatus = p.status || 'pending';
+                let statusText, statusBadgeColor, statusBorderColor, statusBgColorText;
+                if (pStatus === 'accepted') {
+                   statusText = '🟢 You are selected';
+                   statusBadgeColor = '#4ade80';
+                   statusBorderColor = 'rgba(74, 222, 128, 0.4)';
+                   statusBgColorText = 'rgba(74, 222, 128, 0.2)';
+                } else if (pStatus === 'rejected') {
+                   statusText = '🔴 Not selected';
+                   statusBadgeColor = '#f87171';
+                   statusBorderColor = 'rgba(248, 113, 113, 0.4)';
+                   statusBgColorText = 'rgba(248, 113, 113, 0.2)';
+                } else {
+                   statusText = '🟡 Under review';
+                   statusBadgeColor = '#fbbf24';
+                   statusBorderColor = 'rgba(251, 191, 36, 0.4)';
+                   statusBgColorText = 'rgba(251, 191, 36, 0.2)';
+                }
+
+                return `
+                <div class="glass-card flex-col justify-between" style="border-top: 3px solid ${pStatus === 'accepted' ? '#4ade80' : pStatus === 'pending' ? '#fbbf24' : '#f87171'};">
+                    <div>
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h4 style="font-size: 1.2rem; margin-bottom: 4px;">${escapeHtml(p.title)}</h4>
+                                <p class="text-muted" style="font-size: 0.85rem;">${escapeHtml(p.description || 'No description provided.')}</p>
+                            </div>
+                            <span class="badge" style="background: ${statusBgColorText}; color: ${statusBadgeColor}; border: 1px solid ${statusBorderColor}; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; text-transform: uppercase; font-weight: bold;">
+                                ${statusText}
+                            </span>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <span class="text-muted" style="font-size: 0.7rem; text-transform: uppercase; font-weight: bold;">Required Skills:</span>
+                            <div style="margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px;">
+                                ${p.required_skills.map(s => `<span class="skill-badge required">${escapeHtml(s)}</span>`).join('')}
+                            </div>
+                        </div>
+                        
+                        ${p.match_score !== undefined ? `
+                            <div class="mb-4" style="background: rgba(255,255,255,0.03); padding: 12px; border-radius: 8px;">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-muted" style="font-size: 0.8rem;">Your Match Score</span>
+                                    <span style="font-size: 1.5rem; font-weight: bold; color: ${p.match_score >= 70 ? '#4ade80' : p.match_score >= 40 ? '#fbbf24' : '#f87171'};">${p.match_score}%</span>
+                                </div>
+                                ${p.match_reason ? `<p style="font-style: italic; font-size: 0.8rem; color: var(--text-muted); margin: 8px 0 0 0;">"${escapeHtml(p.match_reason)}"</p>` : ''}
+                            </div>
+                        ` : ''}
+                    </div>
+                    
+                    <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1);">
+                        ${pStatus === 'accepted' ? `
+                            <div class="flex items-center gap-2" style="color: #4ade80; font-size: 0.9rem;">
+                                <i data-lucide="check-circle" style="width: 18px;"></i>
+                                <span>Congratulations! You've been selected.</span>
+                            </div>
+                        ` : pStatus === 'rejected' ? `
+                            <div class="flex items-center gap-2" style="color: #f87171; font-size: 0.9rem;">
+                                <i data-lucide="x-circle" style="width: 18px;"></i>
+                                <span>Application not selected.</span>
+                            </div>
+                        ` : `
+                            <div class="flex items-center gap-2" style="color: #fbbf24; font-size: 0.9rem;">
+                                <i data-lucide="clock" style="width: 18px;"></i>
+                                <span>Under review</span>
+                            </div>
+                        `}
+                    </div>
+                </div>
+            `;
+            }).join('');
+            
+            lucide.createIcons();
+            
+        } catch (error) {
+            console.error('[Collaboration] Error:', error);
+            grid.innerHTML = `
+                <div class="glass-card text-center py-16" style="grid-column: 1/-1;">
+                    <i data-lucide="alert-circle" style="width: 64px; height: 64px; color: #f87171; margin-bottom: 16px;"></i>
+                    <h3 class="mb-2 text-error">Failed to Load Collaborations</h3>
+                    <p class="text-muted mb-4">${error.message}</p>
+                    <button class="glass-btn" onclick="loadStudentGroups()">Try Again</button>
+                </div>
+            `;
+            lucide.createIcons();
+        }
+    }
+
+    async function loadDiscovery() {
+        const res = await fetch('/get_groups');
+        const data = await res.json();
+        const grid = document.getElementById('discovery-grid');
+        grid.innerHTML = '';
+        
+        if (data.groups.length === 0) {
+            grid.innerHTML = '<div class="glass-card w-full text-center py-6" style="grid-column: 1/-1;"><p class="text-muted">No external cohorts detected on the network.</p></div>';
+            return;
+        }
+
+        data.groups.forEach(g => {
+            const members = g.members.map(m => `<span class="badge" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 6px; font-size: 0.95rem; font-weight:600; color: #fff;">${m.name}</span>`).join('');
+            grid.innerHTML += `
+                <div class="glass-card flex-col flex justify-between" style="border-top: 3px solid #8b5cf6;">
+                    <div>
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h4 style="font-size: 1.1rem; margin-bottom: 4px;">${g.name}</h4>
+                                <p class="text-accent text-sm font-bold">${g.project_title}</p>
+                            </div>
+                        </div>
+                        <p class="mb-6 text-muted text-sm">${g.description || 'General engineering project framework.'}</p>
+                        <div class="mb-6">
+                            <p class="text-muted text-xs uppercase font-bold mb-2">Team Formation</p>
+                            <div class="flex" style="flex-wrap: wrap; gap: 8px;">${members}</div>
+                        </div>
+                    </div>
+                    <button class="glass-btn glass-btn-primary w-full mt-auto" onclick="joinGroup(${g.id})">Transmit Join Request</button>
+                </div>
+            `;
+        });
+    }
+
+    async function joinGroup(id) {
+        const formData = new FormData();
+        formData.append('group_id', id);
+        const res = await fetch('/join_group', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (data.success) {
+            alert('Successfully merged into cohort!');
+            loadDiscovery();
+        } else {
+            alert('Merge failure or you are already an active participant.');
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,832 @@
+{% extends "base.html" %}
+
+{% block title %}Skill Gap Radar - Professional Engineering Insights{% endblock %}
+
+{% block marketing_content %}
+<!-- Ambient Background Glow -->
+<div style="position: absolute; top: -10%; left: 10%; width: 50vw; height: 50vw; background: radial-gradient(circle, rgba(0, 245, 255, 0.1) 0%, transparent 70%); filter: blur(100px); z-index: -1; pointer-events: none;"></div>
+<div style="position: absolute; top: 10%; right: 5%; width: 40vw; height: 40vw; background: radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, transparent 70%); filter: blur(100px); z-index: -1; pointer-events: none;"></div>
+
+<section class="hero relative">
+  <div class="hero-eyebrow">Skills Intelligence</div>
+  <h1>Understand your skills clearly.</h1>
+  <p class="hero-sub">Upload your resume and see exactly where you stand against your target role.</p>
+  <div class="hero-actions">
+    <a href="/register" class="btn btn-accent btn-large" style="text-decoration: none; box-shadow: 0 0 15px rgba(0, 245, 255, 0.2);">Start Analysis</a>
+    <a href="/dashboard" class="btn btn-default btn-large" style="text-decoration: none;">Go to Dashboard</a>
+  </div>
+</section>
+
+<!-- Skills Intelligence Galaxy Section -->
+<section id="skills-galaxy" class="skills-galaxy-section">
+  <div class="galaxy-header text-center">
+    <div class="galaxy-eyebrow">SKILLS INTELLIGENCE</div>
+    <h2>Deep Skills Intelligence<br />Across Modern Tech</h2>
+    <p class="galaxy-subtitle">Explore 70+ tech skills across 7 galaxies. Click any galaxy to dive in.</p>
+  </div>
+
+  <!-- Category Filters -->
+  <div class="category-filters" id="cat-bar-section"></div>
+
+  <!-- Canvas Container -->
+  <div class="galaxy-canvas-container" id="galaxy-container">
+    <!-- Overview layer -->
+    <canvas id="map-canvas" style="position:absolute;inset:0;width:100%;height:100%;"></canvas>
+    <div class="galaxy-hint-text" id="galaxy-hint">Click a galaxy to explore</div>
+
+    <!-- Detail layer -->
+    <div id="detail-layer" style="position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity .6s ease;">
+      <canvas id="detail-canvas" style="position:absolute;inset:0;width:100%;height:100%;cursor:grab;"></canvas>
+      <button id="back-btn-inline">◀ Back</button>
+    </div>
+
+    <!-- Hover Tooltip -->
+    <div id="skill-tooltip" class="skill-tooltip">
+      <div class="tooltip-header">
+        <div class="tooltip-color-dot" id="tooltip-color"></div>
+        <div>
+          <h4 id="tooltip-skill">Skill Name</h4>
+          <span id="tooltip-category" class="category-badge">Category</span>
+        </div>
+      </div>
+      <p class="tooltip-desc">Analyzed across thousands of resumes • Compared against real job requirements</p>
+    </div>
+
+    <!-- Bottom instructions -->
+    <div class="galaxy-instructions" id="galaxy-instructions">
+      <span>HOVER TO EXPLORE</span><span>•</span><span>DRAG TO ROTATE</span><span>•</span><span>SCROLL TO ZOOM</span>
+    </div>
+  </div>
+</section>
+
+<style>
+  :root { --accent: #00f5ff; }
+
+  /* ── Section ── */
+  .skills-galaxy-section {
+    padding: 80px 0 80px;     /* zero horizontal padding — let children handle it */
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+  }
+
+  @media (max-width: 768px) {
+    .skills-galaxy-section { padding: 60px 0 48px; }
+  }
+
+  .galaxy-header {
+    margin-bottom: 40px;
+    padding: 0 24px;          /* add horizontal padding here instead */
+  }
+
+  @media (max-width: 640px) {
+    .galaxy-header { margin-bottom: 24px; }
+    .galaxy-subtitle { font-size: 0.9rem; }
+  }
+  .galaxy-eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 0.85rem; font-weight: 600; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--accent);
+    margin-bottom: 20px; padding: 8px 20px;
+    background: rgba(0,245,255,0.08); border: 1px solid rgba(0,245,255,0.25);
+    border-radius: 9999px;
+  }
+  .galaxy-header h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2.4rem, 8vw, 4.2rem); /* More aggressive scaling */
+    font-weight: 700; color: #fff;
+    letter-spacing: -0.03em; line-height: 1.15; /* Better line height for mobile */
+  }
+  .galaxy-subtitle {
+    font-size: 1.1rem; color: #94a3b8; max-width: 620px; margin: 0 auto;
+    line-height: 1.6;
+  }
+
+  /* ── Filter bar ── */
+  .category-filters {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 24px;
+    padding: 0 24px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .category-filters::-webkit-scrollbar { display: none; }
+
+  @media (max-width: 768px) {
+    .category-filters { justify-content: flex-start; }
+  }
+  .filter-btn {
+    padding: 8px 18px; border-radius: 9999px;
+    font-size: 0.8rem; font-weight: 500;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: #9ca3af; cursor: pointer; transition: all 0.3s ease;
+    backdrop-filter: blur(12px); white-space: nowrap;
+  }
+  .filter-btn:hover {
+    background: rgba(255,255,255,0.12);
+    border-color: rgba(0,245,255,0.4); color: #fff;
+  }
+  .filter-btn.active {
+    background: var(--clr, var(--accent));
+    color: #000; border-color: var(--clr2, var(--accent));
+    box-shadow: 0 0 22px -4px var(--clr, var(--accent)), inset 0 0 0 1.5px var(--clr2, var(--accent));
+    font-weight: 600;
+  }
+
+  /* ── Canvas container ── */
+  .galaxy-canvas-container {
+    position: relative;
+    height: 520px;
+    width: 100%;
+    max-width: 100%;          /* don't constrain width here */
+    margin: 0 auto;
+    border-radius: 24px;
+    overflow: hidden;
+    background: #050a12;
+    border: 1px solid rgba(255,255,255,0.1);
+    box-shadow: 0 25px 60px rgba(0,0,0,0.6);
+  }
+
+  @media (min-width: 1024px) { .galaxy-canvas-container { height: 640px; } }
+  @media (max-width: 768px)  { .galaxy-canvas-container { height: 360px; border-radius: 16px; } }
+  @media (max-width: 480px)  { .galaxy-canvas-container { height: 300px; border-radius: 12px; } }
+
+  /* ── Hint text ── */
+  .galaxy-hint-text {
+    position: absolute; bottom: 48px; left: 50%; transform: translateX(-50%);
+    font-size: 10px; letter-spacing: 3px; color: rgba(255,255,255,.32);
+    text-transform: uppercase; pointer-events: none; z-index: 10;
+    animation: pulse-hint 2.5s ease-in-out infinite;
+    white-space: nowrap;
+  }
+  @keyframes pulse-hint { 0%,100%{opacity:.32} 50%{opacity:.72} }
+
+  /* ── Back button (inside container) ── */
+  #back-btn-inline {
+    position: absolute; top: 16px; left: 18px; z-index: 40;
+    font-size: 10px; letter-spacing: 2px; padding: 7px 16px;
+    border-radius: 30px; border: 1.5px solid rgba(255,255,255,.25);
+    background: rgba(5,10,18,.75); color: rgba(255,255,255,.75);
+    cursor: pointer; backdrop-filter: blur(8px);
+    transition: all .25s; font-family: inherit;
+  }
+  #back-btn-inline:hover { border-color: #fff; color: #fff; }
+
+  /* ── Tooltip ── */
+  .skill-tooltip {
+    position: absolute; top: 56px; left: 50%;
+    transform: translateX(-50%) translateY(12px);
+    padding: 16px 22px; border-radius: 16px;
+    background: rgba(8,15,32,0.96); backdrop-filter: blur(24px);
+    border: 1px solid rgba(255,255,255,0.15);
+    max-width: 260px; opacity: 0;
+    transition: all 0.25s cubic-bezier(0.23,1,0.32,1);
+    pointer-events: none; z-index: 30;
+    box-shadow: 0 20px 50px -10px rgba(0,0,0,0.7);
+  }
+  .skill-tooltip.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .tooltip-header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .tooltip-color-dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+  .skill-tooltip h4 { font-size: 1.1rem; font-weight: 700; color: #fff; margin: 0; letter-spacing: -0.02em; }
+  .category-badge {
+    display: inline-block; padding: 2px 8px; border-radius: 6px;
+    font-size: 0.66rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .tooltip-desc { font-size: 0.76rem; color: #94a3b8; line-height: 1.5; margin: 0; }
+
+  /* ── Instructions ── */
+  .galaxy-instructions {
+    position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 12px; font-size: 0.66rem; color: #475569;
+    z-index: 10; letter-spacing: 0.14em; text-transform: uppercase;
+    pointer-events: none; white-space: nowrap;
+  }
+</style>
+
+<script>
+(function() {
+  /* ─────────────────────────────────────────
+     DATA
+  ───────────────────────────────────────── */
+  const GALAXIES = [
+    { id:'devops',    label:'DevOps',     color:'#1B3A6B', sunColor:'#F5A623',
+      skills:['Docker','Kubernetes','CI/CD','Terraform','Ansible','Jenkins','GitHub Actions','ArgoCD','Prometheus','Helm'] },
+    { id:'cloud',     label:'Cloud',      color:'#0A5C4A', sunColor:'#F0E6C8',
+      skills:['AWS','Azure','GCP','Vercel','Cloudflare','DigitalOcean','Heroku','Serverless','IAM','Lambda'] },
+    { id:'languages', label:'Languages',  color:'#6B1A3A', sunColor:'#FFCBA4',
+      skills:['Python','JavaScript','TypeScript','Java','Go','Rust','C++','Swift','Kotlin','Ruby'] },
+    { id:'ml',        label:'ML / AI',    color:'#8B5CF6', sunColor:'#FDE68A',
+      skills:['TensorFlow','PyTorch','Scikit-learn','Keras','Pandas','NumPy','OpenCV','Hugging Face','LLMs','RAG'] },
+    { id:'frontend',  label:'Frontend',   color:'#2D6A4F', sunColor:'#FF6B6B',
+      skills:['React','Next.js','Vue','Angular','Tailwind','Sass','Vite','Svelte','WebGL','Three.js'] },
+    { id:'backend',   label:'Backend',    color:'#7B3F00', sunColor:'#B0C4DE',
+      skills:['Node.js','Django','FastAPI','GraphQL','Express','Spring Boot','gRPC','REST','Auth','Queues'] },
+    { id:'databases', label:'Databases',  color:'#4A0E5C', sunColor:'#7FDBDA',
+      skills:['PostgreSQL','MongoDB','Redis','MySQL','Elasticsearch','Supabase','Cassandra','Neo4j','DynamoDB','SQLite'] },
+  ];
+
+  /* ─────────────────────────────────────────
+     HELPERS
+  ───────────────────────────────────────── */
+  function hex2rgb(hex) {
+    return [parseInt(hex.slice(1,3),16), parseInt(hex.slice(3,5),16), parseInt(hex.slice(5,7),16)];
+  }
+  function rgba(hex, a) {
+    const [r,g,b] = hex2rgb(hex);
+    return `rgba(${r},${g},${b},${a})`;
+  }
+
+  /* ─────────────────────────────────────────
+     DOM REFS
+  ───────────────────────────────────────── */
+  const container   = document.getElementById('galaxy-container');
+  const mapCanvas   = document.getElementById('map-canvas');
+  const mapCtx      = mapCanvas.getContext('2d');
+  const detailLayer = document.getElementById('detail-layer');
+  const detailCanvas= document.getElementById('detail-canvas');
+  const dCtx        = detailCanvas.getContext('2d');
+  const tooltip     = document.getElementById('skill-tooltip');
+  const hintEl      = document.getElementById('galaxy-hint');
+  const instrEl     = document.getElementById('galaxy-instructions');
+  const backBtn     = document.getElementById('back-btn-inline');
+  const catBar      = document.getElementById('cat-bar-section');
+
+  /* ─────────────────────────────────────────
+     STATE
+  ───────────────────────────────────────── */
+  let mapGalaxies = [], hoveredMap = null, mapRaf;
+  let currentGalaxy = null, skillOrbs = [], detailRaf, detailT0 = 0;
+  let isDragging = false, lastMX = 0, lastMY = 0;
+  let rotX = .28, rotY = 0, zoomVal = 1;
+
+  /* ─────────────────────────────────────────
+     RESIZE — fit canvases to container
+  ───────────────────────────────────────── */
+  function getSize() {
+    return { W: container.clientWidth, H: container.clientHeight };
+  }
+
+  function resizeCanvas(c) {
+    const dpr = window.devicePixelRatio || 1;
+    const {W,H} = getSize();
+    c.width  = W * dpr;
+    c.height = H * dpr;
+    c.style.width  = W + 'px';
+    c.style.height = H + 'px';
+    const ctx2 = c.getContext('2d');
+    ctx2.setTransform(dpr,0,0,dpr,0,0);
+  }
+
+  function resizeAll() {
+    resizeCanvas(mapCanvas);
+    resizeCanvas(detailCanvas);
+    buildMapGalaxies();
+  }
+
+  /* ─────────────────────────────────────────
+     CATEGORY BAR
+  ───────────────────────────────────────── */
+  function buildCatBar() {
+    catBar.innerHTML = '';
+    GALAXIES.forEach(g => {
+      const btn = document.createElement('button');
+      btn.className = 'filter-btn';
+      btn.dataset.id = g.id;
+      btn.textContent = g.label.toUpperCase();
+      btn.style.setProperty('--clr', g.sunColor);
+      btn.style.setProperty('--clr2', g.color);
+      btn.addEventListener('click', () => {
+        if (detailLayer.style.pointerEvents === 'all') {
+          switchGalaxy(g);
+        } else {
+          openGalaxy(g);
+        }
+      });
+      catBar.appendChild(btn);
+    });
+  }
+
+  function updateCatBar(activeId) {
+    catBar.querySelectorAll('.filter-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.id === activeId);
+    });
+  }
+
+  /* ─────────────────────────────────────────
+     OVERVIEW MAP
+  ───────────────────────────────────────── */
+  function buildMapGalaxies() {
+    const {W,H} = getSize();
+    const cx = W/2, cy = H * .44;   /* slightly higher center */
+
+    /* Scale radii to actual container size */
+    const rx = Math.min(W * .36, 280);
+    const ry = Math.min(H * .33, 210);
+
+    /* Planet size scales with container */
+    const baseR = Math.min(W, H) < 400 ? 36 : Math.min(W, H) < 600 ? 46 : 54;
+
+    const n = GALAXIES.length;
+    mapGalaxies = GALAXIES.map((g, i) => {
+      const angle = (i / n) * Math.PI * 2 - Math.PI / 2;
+      return {
+        ...g,
+        cx: cx + Math.cos(angle) * rx,
+        cy: cy + Math.sin(angle) * ry,
+        radius: baseR,
+        orbs: Array.from({length: 3}, (_, j) => ({
+          angle: (j/3) * Math.PI * 2,
+          dist: 22 + j * 7,
+          speed: .4 + j * .15,
+          r: 3.2 - j * .6
+        }))
+      };
+    });
+  }
+
+  function drawMapGalaxy(g, t, hov) {
+    const [r,gr,b]     = hex2rgb(g.color);       // orb / planet body
+    const [sr,sg,sb]   = hex2rgb(g.sunColor);    // sun / accent
+    const sc = hov ? 1.13 : 1, R = g.radius * sc;
+    mapCtx.save();
+    mapCtx.translate(g.cx, g.cy);
+
+    // outer glow — sun color
+    const glow = mapCtx.createRadialGradient(0,0,R*.3,0,0,R*1.9);
+    glow.addColorStop(0,`rgba(${sr},${sg},${sb},${hov?.28:.13})`);
+    glow.addColorStop(1,`rgba(${sr},${sg},${sb},0)`);
+    mapCtx.beginPath(); mapCtx.arc(0,0,R*1.9,0,Math.PI*2);
+    mapCtx.fillStyle = glow; mapCtx.fill();
+
+    // sphere — orb color
+    const sph = mapCtx.createRadialGradient(-R*.25,-R*.25,R*.05,0,0,R);
+    sph.addColorStop(0,`rgba(${Math.min(r+55,255)},${Math.min(gr+50,255)},${Math.min(b+55,255)},1)`);
+    sph.addColorStop(.5,`rgba(${r},${gr},${b},1)`);
+    sph.addColorStop(1,`rgba(${Math.max(r-40,0)},${Math.max(gr-40,0)},${Math.max(b-40,0)},1)`);
+    mapCtx.beginPath(); mapCtx.arc(0,0,R,0,Math.PI*2);
+    mapCtx.fillStyle = sph; mapCtx.fill();
+
+    // highlight
+    const hi = mapCtx.createRadialGradient(-R*.3,-R*.3,0,-R*.1,-R*.1,R*.55);
+    hi.addColorStop(0,'rgba(255,255,255,.5)'); hi.addColorStop(1,'rgba(255,255,255,0)');
+    mapCtx.beginPath(); mapCtx.arc(0,0,R,0,Math.PI*2);
+    mapCtx.fillStyle = hi; mapCtx.fill();
+
+    // ring — sun color
+    mapCtx.beginPath();
+    mapCtx.ellipse(0,0,R*1.45,R*.3,-.35,0,Math.PI*2);
+    mapCtx.strokeStyle=`rgba(${sr},${sg},${sb},.55)`;
+    mapCtx.lineWidth = hov ? 2.2 : 1.4; mapCtx.stroke();
+
+    // orbiting dots — sun color
+    g.orbs.forEach(o => {
+      const a = o.angle + t*o.speed;
+      mapCtx.beginPath();
+      mapCtx.arc(Math.cos(a)*o.dist*sc, Math.sin(a)*o.dist*sc*.38, o.r*sc, 0, Math.PI*2);
+      mapCtx.fillStyle=`rgba(${sr},${sg},${sb},.9)`; mapCtx.fill();
+    });
+
+    // label — sun color
+    mapCtx.font = `600 11px 'Syne','Inter',sans-serif`;
+    mapCtx.fillStyle=`rgba(${sr},${sg},${sb},${hov?1:.85})`;
+    mapCtx.textAlign='center';
+    mapCtx.fillText(g.label, 0, R+18);
+
+    mapCtx.restore();
+  }
+
+  function startMap() {
+    cancelAnimationFrame(mapRaf);
+    resizeCanvas(mapCanvas);
+    buildMapGalaxies();
+    function frame(ts) {
+      const {W,H} = getSize();
+      mapCtx.clearRect(0,0,W,H);
+      // starfield
+      if (!frame._stars || frame._starsW !== W) {
+        frame._starsW = W;
+        frame._stars = Array.from({length:180},()=>({
+          x:Math.random()*W, y:Math.random()*H,
+          r:Math.random()*1.2+.2, a:Math.random()*.5+.15,
+          sp:Math.random()*.003+.001, ph:Math.random()*Math.PI*2
+        }));
+      }
+      frame._stars.forEach(s=>{
+        const al = s.a * (.6 + .4*Math.abs(Math.sin(ts*.001*s.sp+s.ph)));
+        mapCtx.beginPath(); mapCtx.arc(s.x,s.y,s.r,0,Math.PI*2);
+        mapCtx.fillStyle=`rgba(200,215,255,${al})`; mapCtx.fill();
+      });
+      mapGalaxies.forEach(g => drawMapGalaxy(g, ts/1000, g===hoveredMap));
+      mapRaf = requestAnimationFrame(frame);
+    }
+    mapRaf = requestAnimationFrame(frame);
+  }
+
+  mapCanvas.addEventListener('mousemove', e => {
+    const r = container.getBoundingClientRect();
+    const mx = e.clientX-r.left, my = e.clientY-r.top;
+    hoveredMap = mapGalaxies.find(g=>{
+      const dx=mx-g.cx,dy=my-g.cy; return Math.sqrt(dx*dx+dy*dy)<g.radius*1.45;
+    })||null;
+    mapCanvas.style.cursor = hoveredMap?'pointer':'default';
+  });
+  mapCanvas.addEventListener('mouseleave', ()=>{ hoveredMap=null; });
+  mapCanvas.addEventListener('click', ()=>{ if(hoveredMap) openGalaxy(hoveredMap); });
+
+  /* touch map */
+  mapCanvas.addEventListener('touchend', e=>{
+    e.preventDefault();
+    const t0=e.changedTouches[0], r=container.getBoundingClientRect();
+    const mx=t0.clientX-r.left, my=t0.clientY-r.top;
+    const hit=mapGalaxies.find(g=>{ const dx=mx-g.cx,dy=my-g.cy; return Math.sqrt(dx*dx+dy*dy)<g.radius*1.7; });
+    if(hit) openGalaxy(hit);
+  },{passive:false});
+
+  /* ─────────────────────────────────────────
+     DETAIL 3D VIEW
+  ───────────────────────────────────────── */
+  function buildSkillOrbs(galaxy) {
+    skillOrbs = galaxy.skills.map((name,i)=>{
+      const ringIdx = Math.floor(i/4);
+      const posInRing = i%4;
+      const ringR  = 100 + ringIdx*65;
+      const tilt   = [.3,.52,.18][ringIdx]||.3;
+      const baseA  = (posInRing / Math.min(4, galaxy.skills.length-ringIdx*4)) * Math.PI*2;
+      return { name, ringR, tilt, baseAngle:baseA,
+               speed:.22-ringIdx*.04, r:13-ringIdx*2,
+               hovered:false, _s:{sx:0,sy:0,scale:1,z:0} };
+    });
+  }
+
+  function proj3D(x,y,z,W,H) {
+    const x1 = x*Math.cos(rotY) - z*Math.sin(rotY);
+    const z1 = x*Math.sin(rotY) + z*Math.cos(rotY);
+    const y2 = y*Math.cos(rotX) - z1*Math.sin(rotX);
+    const z2 = y*Math.sin(rotX) + z1*Math.cos(rotX);
+    const fov = 480*zoomVal;
+    const sc  = fov/(fov+z2+220);
+    return { sx:W/2+x1*sc, sy:H/2+y2*sc, scale:sc, z:z2 };
+  }
+
+  function drawDetail(t) {
+    const {W,H} = getSize();
+    dCtx.clearRect(0,0,W,H);
+    const g = currentGalaxy;
+    const [r,gr,b]   = hex2rgb(g.color);       // orb color
+    const [sr,sg,sb] = hex2rgb(g.sunColor);    // sun color
+
+    // starfield
+    if(!drawDetail._stars || drawDetail._starsW!==W) {
+      drawDetail._starsW=W;
+      drawDetail._stars=Array.from({length:160},()=>({
+        x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.1+.2,
+        a:Math.random()*.45+.15
+      }));
+    }
+    drawDetail._stars.forEach(s=>{
+      dCtx.beginPath(); dCtx.arc(s.x,s.y,s.r,0,Math.PI*2);
+      dCtx.fillStyle=`rgba(200,215,255,${s.a})`; dCtx.fill();
+    });
+
+    // ambient aura — sun color
+    const aura=dCtx.createRadialGradient(W/2,H/2,10,W/2,H/2,200);
+    aura.addColorStop(0,`rgba(${sr},${sg},${sb},.18)`);
+    aura.addColorStop(1,`rgba(${sr},${sg},${sb},0)`);
+    dCtx.beginPath(); dCtx.arc(W/2,H/2,200,0,Math.PI*2);
+    dCtx.fillStyle=aura; dCtx.fill();
+
+    // orbital rings — orb color
+    for(let ri=0;ri<3;ri++){
+      const rR=[100,165,230][ri], tilt=[.3,.52,.18][ri];
+      dCtx.beginPath();
+      for(let i=0;i<=80;i++){
+        const a=(i/80)*Math.PI*2;
+        const p=proj3D(Math.cos(a)*rR, Math.sin(a)*rR*Math.cos(tilt), Math.sin(a)*rR*Math.sin(tilt),W,H);
+        i===0?dCtx.moveTo(p.sx,p.sy):dCtx.lineTo(p.sx,p.sy);
+      }
+      dCtx.strokeStyle=`rgba(${r},${gr},${b},.22)`; dCtx.lineWidth=1; dCtx.stroke();
+    }
+
+    // project orbs
+    const proj = skillOrbs.map(o=>{
+      const a=o.baseAngle+t*o.speed;
+      const p=proj3D(Math.cos(a)*o.ringR, Math.sin(a)*o.ringR*Math.cos(o.tilt), Math.sin(a)*o.ringR*Math.sin(o.tilt),W,H);
+      o._s=p; return {orb:o,...p};
+    });
+    proj.sort((a,b)=>a.z-b.z);
+
+    proj.forEach(({orb,sx,sy,scale})=>{
+      const oR=orb.r*scale;
+      const alpha=Math.max(.28,.4+.6*Math.max(0,(orb._s.z+220)/440));
+
+      // glow — orb color
+      if(orb.hovered||alpha>.65){
+        const og=dCtx.createRadialGradient(sx,sy,0,sx,sy,oR*3.2);
+        og.addColorStop(0,`rgba(${r},${gr},${b},${.28*alpha})`);
+        og.addColorStop(1,`rgba(${r},${gr},${b},0)`);
+        dCtx.beginPath(); dCtx.arc(sx,sy,oR*3.2,0,Math.PI*2);
+        dCtx.fillStyle=og; dCtx.fill();
+      }
+
+      // sphere — orb color
+      const sg2=dCtx.createRadialGradient(sx-oR*.3,sy-oR*.3,oR*.05,sx,sy,oR);
+      sg2.addColorStop(0,`rgba(${Math.min(r+80,255)},${Math.min(gr+75,255)},${Math.min(b+80,255)},${alpha})`);
+      sg2.addColorStop(.6,`rgba(${r},${gr},${b},${alpha})`);
+      sg2.addColorStop(1,`rgba(${Math.max(r-40,0)},${Math.max(gr-40,0)},${Math.max(b-40,0)},${alpha})`);
+      dCtx.beginPath(); dCtx.arc(sx,sy,oR,0,Math.PI*2);
+      dCtx.fillStyle=sg2; dCtx.fill();
+
+      // highlight
+      const hg=dCtx.createRadialGradient(sx-oR*.3,sy-oR*.3,0,sx-oR*.1,sy-oR*.1,oR*.6);
+      hg.addColorStop(0,`rgba(255,255,255,${.5*alpha})`);
+      hg.addColorStop(1,`rgba(255,255,255,0)`);
+      dCtx.beginPath(); dCtx.arc(sx,sy,oR,0,Math.PI*2); dCtx.fillStyle=hg; dCtx.fill();
+
+      // hover ring — sun color accent
+      if(orb.hovered){
+        dCtx.beginPath(); dCtx.arc(sx,sy,oR+4.5,0,Math.PI*2);
+        dCtx.strokeStyle=`rgba(${sr},${sg},${sb},.95)`;
+        dCtx.lineWidth=2; dCtx.stroke();
+        // label on hover
+        dCtx.font=`500 ${Math.round(10*scale+7)}px 'Syne','Inter',sans-serif`;
+        dCtx.fillStyle=`rgba(${sr},${sg},${sb},1)`;
+        dCtx.textAlign='center';
+        dCtx.fillText(orb.name, sx, sy - oR - 9);
+      }
+    });
+
+    // sun — sun color
+    const sR=40, pulse=1+.065*Math.sin(t*1.8);
+
+    // corona — sun color
+    const corona=dCtx.createRadialGradient(W/2,H/2,sR,W/2,H/2,sR*3*pulse);
+    corona.addColorStop(0,`rgba(${sr},${sg},${sb},.45)`);
+    corona.addColorStop(.45,`rgba(${sr},${sg},${sb},.12)`);
+    corona.addColorStop(1,'transparent');
+    dCtx.beginPath(); dCtx.arc(W/2,H/2,sR*3*pulse,0,Math.PI*2);
+    dCtx.fillStyle=corona; dCtx.fill();
+
+    // core sphere — sun color
+    const core=dCtx.createRadialGradient(W/2-11,H/2-11,2,W/2,H/2,sR*pulse);
+    core.addColorStop(0,'#ffffff');
+    core.addColorStop(.3,`rgba(${Math.min(sr+70,255)},${Math.min(sg+70,255)},${Math.min(sb+70,255)},1)`);
+    core.addColorStop(1,`rgba(${sr},${sg},${sb},1)`);
+    dCtx.beginPath(); dCtx.arc(W/2,H/2,sR*pulse,0,Math.PI*2);
+    dCtx.fillStyle=core; dCtx.fill();
+
+    // sun label — pick readable color (dark text on light sun, light on dark)
+    const sunBrightness = (sr*299 + sg*587 + sb*114) / 1000;
+    dCtx.font=`700 12px 'Syne','Inter',sans-serif`;
+    dCtx.fillStyle = sunBrightness > 140 ? 'rgba(0,0,0,.75)' : '#fff';
+    dCtx.textAlign='center'; dCtx.textBaseline='middle';
+    dCtx.fillText(g.label.toUpperCase(), W/2, H/2);
+    dCtx.textBaseline='alphabetic';
+  }
+
+  function startDetail() {
+    cancelAnimationFrame(detailRaf);
+    resizeCanvas(detailCanvas);
+    detailT0 = performance.now();
+    function frame(ts) {
+      drawDetail((ts-detailT0)/1000);
+      detailRaf = requestAnimationFrame(frame);
+    }
+    detailRaf = requestAnimationFrame(frame);
+  }
+
+  /* detail mouse */
+  detailCanvas.addEventListener('mousedown',e=>{isDragging=true;lastMX=e.clientX;lastMY=e.clientY;});
+  window.addEventListener('mouseup',()=>isDragging=false);
+  window.addEventListener('mousemove',e=>{
+    if(!isDragging)return;
+    rotY+=(e.clientX-lastMX)*.007; rotX+=(e.clientY-lastMY)*.007;
+    rotX=Math.max(-.9,Math.min(.9,rotX));
+    lastMX=e.clientX;lastMY=e.clientY;
+  });
+  detailCanvas.addEventListener('wheel',e=>{
+    e.preventDefault();
+    zoomVal*=e.deltaY>0?.93:1.07;
+    zoomVal=Math.max(.4,Math.min(2.2,zoomVal));
+  },{passive:false});
+
+  /* tooltip */
+  detailCanvas.addEventListener('mousemove',e=>{
+    if(isDragging||!currentGalaxy)return;
+    const r=container.getBoundingClientRect();
+    const mx=e.clientX-r.left, my=e.clientY-r.top;
+    let found=null;
+    skillOrbs.forEach(o=>{
+      o.hovered=false;
+      const dx=mx-o._s.sx,dy=my-o._s.sy;
+      if(Math.sqrt(dx*dx+dy*dy)<o.r*o._s.scale+6) found=o;
+    });
+    if(found){
+      found.hovered=true;
+      document.getElementById('tooltip-skill').textContent=found.name;
+      const cat=document.getElementById('tooltip-category');
+      cat.textContent=currentGalaxy.label.toUpperCase();
+      cat.style.background=rgba(currentGalaxy.sunColor,.2);
+      cat.style.color=currentGalaxy.sunColor;
+      const dot=document.getElementById('tooltip-color');
+      dot.style.background=currentGalaxy.color;
+      dot.style.boxShadow=`0 0 8px ${currentGalaxy.color}, 0 0 0 2px ${currentGalaxy.sunColor}44`;
+      tooltip.classList.add('show');
+    } else {
+      tooltip.classList.remove('show');
+    }
+  });
+  detailCanvas.addEventListener('mouseleave',()=>{ tooltip.classList.remove('show'); });
+
+  /* detail touch */
+  detailCanvas.addEventListener('touchstart',e=>{ isDragging=true; lastMX=e.touches[0].clientX; lastMY=e.touches[0].clientY; },{passive:true});
+  detailCanvas.addEventListener('touchmove',e=>{
+    e.preventDefault();
+    rotY+=(e.touches[0].clientX-lastMX)*.005;
+    rotX+=(e.touches[0].clientY-lastMY)*.005;
+    lastMX=e.touches[0].clientX; lastMY=e.touches[0].clientY;
+  },{passive:false});
+  detailCanvas.addEventListener('touchend',()=>isDragging=false);
+
+  /* ─────────────────────────────────────────
+     TRANSITIONS
+  ───────────────────────────────────────── */
+  function openGalaxy(g) {
+    currentGalaxy=g; rotY=0; rotX=.28; zoomVal=1;
+    buildSkillOrbs(g);
+    // fade map out
+    mapCanvas.style.transition='opacity .5s ease';
+    mapCanvas.style.opacity='0';
+    hintEl.style.opacity='0';
+    setTimeout(()=>{
+      cancelAnimationFrame(mapRaf);
+      detailLayer.style.opacity='1';
+      detailLayer.style.pointerEvents='all';
+      instrEl.style.opacity='1';
+      startDetail();
+    },400);
+    updateCatBar(g.id);
+  }
+
+  function closeDetail() {
+    cancelAnimationFrame(detailRaf);
+    tooltip.classList.remove('show');
+    detailLayer.style.opacity='0';
+    detailLayer.style.pointerEvents='none';
+    updateCatBar(null);
+    setTimeout(()=>{
+      mapCanvas.style.opacity='1';
+      hintEl.style.opacity='1';
+      startMap();
+    },400);
+  }
+
+  function switchGalaxy(g) {
+    if(g===currentGalaxy)return;
+    cancelAnimationFrame(detailRaf);
+    currentGalaxy=g; rotY=0; rotX=.28; zoomVal=1;
+    buildSkillOrbs(g); startDetail();
+    updateCatBar(g.id);
+  }
+
+  backBtn.addEventListener('click', closeDetail);
+
+  /* ─────────────────────────────────────────
+     INIT
+  ───────────────────────────────────────── */
+  buildCatBar();
+  resizeAll();
+  startMap();
+
+  const ro = new ResizeObserver(()=>{ resizeAll(); });
+  ro.observe(container);
+})();
+</script>
+
+<!-- Features Section -->
+<section id="features" class="features">
+  <div class="features-header text-center" style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
+    <h2 style="font-family: 'Syne', sans-serif; font-size: 2.5rem; font-weight: 700; color: #fff; letter-spacing: -0.02em; margin-bottom: 16px;">Precision Engineering Audit</h2>
+    <p class="text-muted" style="font-size: 1.15rem; max-width: 600px; line-height: 1.6;">Automated skill analysis, personalized learning paths, and a professional engineering network—built specifically for developers.</p>
+  </div>
+  <div class="cards">
+    <div class="card features-card">
+      <div class="card-icon"><i data-lucide="zap" style="width: 20px;"></i></div>
+      <div class="card-title">Skill Analysis</div>
+      <p class="card-desc">Identify gaps between your current skills and your target role with automated precision.</p>
+    </div>
+    <div class="card features-card">
+      <div class="card-icon"><i data-lucide="milestone" style="width: 20px;"></i></div>
+      <div class="card-title">Roadmap</div>
+      <p class="card-desc">Get a prioritised, algorithmic list of what frameworks to learn next, in perfect order.</p>
+    </div>
+    <div class="card features-card">
+      <div class="card-icon"><i data-lucide="check-circle" style="width: 20px;"></i></div>
+      <div class="card-title">Peer Review</div>
+      <p class="card-desc">Have your advanced technical skills verified directly by experienced engineers in your network.</p>
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="footer-container">
+    <div class="footer-brand">
+      <h3>Skill<span class="accent">Gap</span></h3>
+      <p>The precision career tool for modern software engineers. Stop guessing, start building.</p>
+    </div>
+    <div class="footer-links">
+      <div class="link-column">
+        <h4>Product</h4>
+        <ul>
+          <li><a href="#">Skill Galaxy</a></li>
+          <li><a href="#">Radar Audit</a></li>
+          <li><a href="#">Pricing</a></li>
+        </ul>
+      </div>
+      <div class="link-column">
+        <h4>Resources</h4>
+        <ul>
+          <li><a href="#">Engineering Blog</a></li>
+          <li><a href="#">Career Roadmap</a></li>
+          <li><a href="#">Documentation</a></li>
+        </ul>
+      </div>
+      <div class="link-column">
+        <h4>Legal</h4>
+        <ul>
+          <li><a href="#">Privacy Policy</a></li>
+          <li><a href="#">Terms of Service</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p>© 2026 SkillGap. All rights reserved.</p>
+    <div class="social-links">
+      <a href="#">Twitter (X)</a>
+      <a href="#">LinkedIn</a>
+      <a href="#">GitHub</a>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .hero { padding: 160px 32px 120px; max-width: 900px; margin: 0 auto; text-align: left; }
+  .hero-eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 0.95rem; font-weight: 600; letter-spacing: 0.04em;
+    text-transform: uppercase; color: var(--accent); margin-bottom: 28px;
+  }
+  .hero-eyebrow::before { content:''; display:block; width:24px; height:1px; background:var(--accent); }
+  .hero h1 { font-size: clamp(3rem,6vw,4.5rem); font-weight:700; letter-spacing:-0.03em; line-height:1.1; color:#f9fafb; margin-bottom:24px; background:none; -webkit-text-fill-color:initial; }
+  .hero-sub { font-size:1.25rem; color:var(--text-muted); font-weight:400; margin-bottom:40px; line-height:1.6; max-width:700px; }
+  .hero-actions { display:flex; gap:16px; flex-wrap:wrap; }
+  .btn-large { padding:14px 28px; font-size:1rem; }
+  .btn { display:inline-flex; align-items:center; justify-content:center; font-family:'Inter',sans-serif; font-size:0.95rem; font-weight:500; padding:10px 20px; border-radius:8px; cursor:pointer; border:none; text-decoration:none; transition:background .2s,border-color .2s,color .2s,transform .2s; white-space:nowrap; }
+  .btn:hover { transform:translateY(-2px); }
+  .btn-default { background:rgba(255,255,255,.05); color:#f9fafb; border:1px solid rgba(255,255,255,.1); backdrop-filter:blur(8px); }
+  .btn-default:hover { background:rgba(255,255,255,.1); border-color:rgba(255,255,255,.2); }
+  .btn-accent { background:var(--accent); color:#000; font-weight:600; }
+  .btn-accent:hover { background:#00dde6; }
+  .features { padding:100px 32px; max-width:1200px; margin:0 auto; position:relative; z-index:5; }
+  .features-header { margin-bottom:60px; text-align:center; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:32px; }
+  .features-card { background:rgba(255,255,255,.02); border:1px solid rgba(255,255,255,.08); backdrop-filter:blur(16px); border-radius:16px; padding:40px 32px; transition:all .3s cubic-bezier(.16,1,.3,1); cursor:default; }
+  .features-card:hover { background:rgba(255,255,255,.04); transform:translateY(-8px); border-color:rgba(0,245,255,.3); box-shadow:0 15px 30px rgba(0,0,0,.4); }
+  .card-icon { width:48px; height:48px; display:flex; align-items:center; justify-content:center; border-radius:12px; border:1px solid rgba(0,245,255,.2); margin-bottom:24px; color:var(--accent); background:rgba(0,245,255,.05); }
+  .card-title { font-size:1.25rem; font-weight:600; color:#f9fafb; margin-bottom:12px; letter-spacing:-0.01em; }
+  .card-desc { font-size:1.05rem; color:var(--text-muted); line-height:1.6; font-weight:400; margin-top:0; }
+  .site-footer { border-top:1px solid rgba(255,255,255,.08); background:#0a0a0a; padding:64px 24px 40px; }
+  .footer-container { max-width:1200px; margin:0 auto; display:grid; grid-template-columns:1fr 2fr; gap:48px; margin-bottom:48px; }
+  .footer-brand h3 { font-size:24px; font-weight:700; margin-bottom:12px; color:#fff; }
+  .footer-brand .accent { color:#00f5ff; }
+  .footer-brand p { color:#94a3b8; font-size:14px; line-height:1.6; max-width:280px; }
+  .footer-links { display:grid; grid-template-columns:repeat(3,1fr); gap:32px; }
+  .link-column h4 { font-size:14px; font-weight:600; color:#fff; margin-bottom:16px; text-transform:uppercase; letter-spacing:.05em; }
+  .link-column ul { list-style:none; padding:0; margin:0; }
+  .link-column li { margin-bottom:12px; }
+  .link-column a { color:#64748b; text-decoration:none; font-size:14px; transition:color .2s; }
+  .link-column a:hover { color:#00f5ff; }
+  .footer-bottom { max-width:1200px; margin:0 auto; padding-top:32px; border-top:1px solid rgba(255,255,255,.05); display:flex; justify-content:space-between; align-items:center; }
+  .footer-bottom p { color:#64748b; font-size:12px; }
+  .social-links { display:flex; gap:24px; }
+  .social-links a { color:#64748b; text-decoration:none; font-size:12px; transition:color .2s; }
+  .social-links a:hover { color:#fff; }
+  @media(max-width:768px){
+    .footer-container{grid-template-columns:1fr;gap:32px;}
+    .footer-brand p{max-width:100%;}
+    .footer-links{grid-template-columns:repeat(2,1fr);}
+    .footer-bottom{flex-direction:column;gap:16px;text-align:center;}
+  }
+  @media(max-width:640px){
+    .footer-links{grid-template-columns:1fr;gap:24px;}
+    .hero{padding:120px 20px 80px;}
+    .features{padding:60px 20px;}
+    .cards{grid-template-columns:1fr;}
+  }
+</style>
+{% endblock %}

@@ -1,0 +1,98 @@
+<nav class="marketing-nav">
+  <div class="nav-logo">Skill<span class="logo-accent">Gap</span></div>
+  <div class="nav-right">
+    {% if session.get('user_id') %}
+        <a href="/dashboard" class="nav-btn nav-btn-primary">Dashboard</a>
+    {% else %}
+        <a href="/login" class="nav-btn nav-btn-ghost">Sign in</a>
+        <a href="/register" class="nav-btn nav-btn-primary">Get Started</a>
+    {% endif %}
+  </div>
+</nav>
+
+<style>
+  /* ── NAV ── */
+  .marketing-nav {
+    position: fixed; 
+    top: 24px; 
+    left: 50%; 
+    transform: translateX(-50%);
+    z-index: 100;
+    width: 90%;
+    max-width: 1000px;
+    height: 64px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 16px 0 28px;
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 100px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    transition: background 0.3s ease;
+  }
+  
+  .marketing-nav:hover {
+      background: rgba(255, 255, 255, 0.05);
+  }
+
+  .nav-logo {
+    font-size: 1.25rem; font-weight: 700;
+    color: #f9fafb; letter-spacing: -0.02em;
+    font-family: 'Syne', 'Inter', sans-serif;
+  }
+  .nav-logo .logo-accent { 
+      color: var(--accent); 
+      text-shadow: 0 0 10px rgba(0, 245, 255, 0.4);
+  }
+
+  .nav-right { display: flex; align-items: center; gap: 12px; margin: 0; padding: 0;}
+  
+  .nav-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.95rem; font-weight: 500;
+      padding: 10px 22px; border-radius: 100px;
+      cursor: pointer; border: none; text-decoration: none;
+      transition: all 0.2s ease;
+  }
+  
+  .nav-btn-ghost {
+      color: var(--text-muted);
+      background: transparent;
+  }
+  
+  .nav-btn-ghost:hover {
+      color: #fff;
+  }
+  
+  .nav-btn-primary {
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(8px);
+  }
+  
+  .nav-btn-primary:hover {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.3);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+
+  .marketing-nav * {
+      box-sizing: border-box;
+  }
+
+  @media (max-width: 768px) {
+    .marketing-nav { 
+      top: 12px; 
+      border-radius: 100px; /* Maintain pill shape */
+      padding: 0 12px 0 20px; 
+      height: 52px; /* Slightly slimmer for more content room */
+      width: 94%; 
+    }
+    .nav-logo { font-size: 1.1rem; }
+    .nav-btn { padding: 8px 16px; font-size: 0.85rem; }
+  }
+</style>

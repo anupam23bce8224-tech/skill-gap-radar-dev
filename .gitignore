@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+
+# Database
+*.db
+*.sqlite3
+*.backup
+
+# Env & logs
+.env
+logs/
+.cache/

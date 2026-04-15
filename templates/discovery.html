@@ -1,0 +1,626 @@
+{% extends "base.html" %}
+
+{% block title %}Discovery Network - SkillGap{% endblock %}
+
+{% block content %}
+<div class="dashboard" style="max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 32px;">
+    <!-- Header -->
+    <div class="header">
+        <p class="text-accent uppercase font-bold mb-2" style="font-size: 0.85rem; letter-spacing: 0.15em;">Network / Discovery</p>
+        <h1 style="font-family: 'Syne', sans-serif; font-size: 2.5rem; letter-spacing: -1.5px; margin-bottom: 8px;">
+            Collaboration Network
+        </h1>
+        <p class="text-muted" style="font-size: 1.1rem; max-width: 600px;">Discover peers, active groups, and opportunities. Build your team.</p>
+    </div>
+
+    <!-- Filters -->
+    <div class="glass-card" style="padding: 24px;">
+        <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-end;">
+            <div style="flex: 1; min-width: 200px;">
+                <label class="text-muted text-xs uppercase font-bold mb-2" style="display: block; letter-spacing: 0.05em;">Filter by Skills</label>
+                <input type="text" id="skill-filter" class="glass-input" placeholder="e.g., Python, React" onkeyup="applyFilters()">
+            </div>
+            <div style="min-width: 160px;">
+                <label class="text-muted text-xs uppercase font-bold mb-2" style="display: block; letter-spacing: 0.05em;">Availability</label>
+                <select id="availability-filter" class="glass-input" onchange="applyFilters()">
+                    <option value="">All Statuses</option>
+                    <option value="available">Available</option>
+                    <option value="busy">Busy</option>
+                    <option value="open_to_collaborate">Open to Collaborate</option>
+                </select>
+            </div>
+            <div style="min-width: 160px;">
+                <label class="text-muted text-xs uppercase font-bold mb-2" style="display: block; letter-spacing: 0.05em;">View Mode</label>
+                <select id="view-mode" class="glass-input" onchange="switchView()">
+                    <option value="all">All Items</option>
+                    <option value="students">Students Only</option>
+                    <option value="groups">Groups Only</option>
+                    <option value="projects">Projects Only</option>
+                </select>
+            </div>
+            <button class="glass-btn glass-btn-primary" onclick="openCreateGroupModal()" style="height: 46px;">
+                <i data-lucide="plus" style="width: 18px; margin-right: 8px;"></i>
+                Create Group
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="stats-grid" id="network-stats">
+        <div class="glass-card" style="text-align: center; padding: 24px; border-bottom: 3px solid var(--accent);">
+            <p class="text-muted uppercase font-bold mb-2" style="font-size: 0.75rem; letter-spacing: 1px;">Active Students</p>
+            <h2 style="font-size: 2.2rem; color: var(--accent);" id="stat-students">-</h2>
+        </div>
+        <div class="glass-card" style="text-align: center; padding: 24px; border-bottom: 3px solid #8b5cf6;">
+            <p class="text-muted uppercase font-bold mb-2" style="font-size: 0.75rem; letter-spacing: 1px;">Active Groups</p>
+            <h2 style="font-size: 2.2rem; color: #8b5cf6;" id="stat-groups">-</h2>
+        </div>
+        <div class="glass-card" style="text-align: center; padding: 24px; border-bottom: 3px solid #4ade80;">
+            <p class="text-muted uppercase font-bold mb-2" style="font-size: 0.75rem; letter-spacing: 1px;">Open Projects</p>
+            <h2 style="font-size: 2.2rem; color: #4ade80;" id="stat-projects">-</h2>
+        </div>
+        <div class="glass-card" style="text-align: center; padding: 24px; border-bottom: 3px solid #fbbf24;">
+            <p class="text-muted uppercase font-bold mb-2" style="font-size: 0.75rem; letter-spacing: 1px;">My Groups</p>
+            <h2 style="font-size: 2.2rem; color: #fbbf24;" id="stat-my-groups">-</h2>
+        </div>
+    </div>
+
+    <!-- Content Sections -->
+    <div class="main-section" style="display: flex; flex-direction: column; gap: 48px;">
+        <!-- Students Section -->
+        <div class="content-section" id="students-section">
+            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 24px; border-bottom: 1px solid var(--border); padding-bottom: 12px;">
+                <h3 style="font-size: 1.5rem; margin: 0;">Verified Engineering Talent</h3>
+                <span class="text-muted" id="students-count" style="font-size: 0.9rem;"></span>
+            </div>
+            <div class="discovery-grid" id="students-grid">
+                <div class="glass-card text-center" style="grid-column: 1/-1; padding: 60px 0;">
+                    <p class="text-muted">Interfacing with available engineering networks...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Groups Section -->
+        <div class="content-section" id="groups-section">
+            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 24px; border-bottom: 1px solid var(--border); padding-bottom: 12px;">
+                <h3 style="font-size: 1.5rem; margin: 0;">Active Peer Cohorts</h3>
+                <span class="text-muted" id="groups-count" style="font-size: 0.9rem;"></span>
+            </div>
+            <div class="discovery-grid" id="groups-grid">
+                <div class="glass-card text-center" style="grid-column: 1/-1; padding: 60px 0;">
+                    <p class="text-muted">Scanning active group frequencies...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Projects Section -->
+        <div class="content-section" id="projects-section">
+            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 24px; border-bottom: 1px solid var(--border); padding-bottom: 12px;">
+                <h3 style="font-size: 1.5rem; margin: 0;">Open Research & Dev Projects</h3>
+                <span class="text-muted" id="projects-count" style="font-size: 0.9rem;"></span>
+            </div>
+            <div class="discovery-grid" id="projects-grid">
+                <div class="glass-card text-center" style="grid-column: 1/-1; padding: 60px 0;">
+                    <p class="text-muted">Awaiting faculty data nodes...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Group Modal -->
+<div id="create-group-modal" class="modal" style="display: none;">
+    <div class="modal-overlay" onclick="closeCreateGroupModal()"></div>
+    <div class="modal-content glass-card" style="max-width: 600px; padding: 32px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;">
+            <h3 style="font-size: 1.5rem; margin: 0;">Initiate New Cohort</h3>
+            <button class="glass-btn btn-sm" onclick="closeCreateGroupModal()" style="border-radius: 50%; width: 36px; height: 36px; padding: 0;">
+                <i data-lucide="x" style="width: 18px;"></i>
+            </button>
+        </div>
+        <form id="create-group-form" onsubmit="createGroup(event)" style="display: flex; flex-direction: column; gap: 20px;">
+            <div class="form-group">
+                <label class="text-muted text-xs uppercase font-bold mb-2" style="display: block; letter-spacing: 0.05em;">Group Designation *</label>
+                <input type="text" name="name" class="glass-input" placeholder="e.g., AI Research Squad" required>
+            </div>
+            <div class="form-group">
+                <label class="text-muted text-xs uppercase font-bold mb-2" style="display: block; letter-spacing: 0.05em;">Project Objective</label>
+                <input type="text" name="project_title" class="glass-input" placeholder="What are you building?">
+            </div>
+            <div class="form-group">
+                <label class="text-muted text-xs uppercase font-bold mb-2" style="display: block; letter-spacing: 0.05em;">Architecture Overview</label>
+                <textarea name="description" class="glass-input" rows="4" placeholder="Technical details, stack, and mission statement..."></textarea>
+            </div>
+            <div class="form-group">
+                <label class="text-muted text-xs uppercase font-bold mb-2" style="display: block; letter-spacing: 0.05em;">Maximum Operatives</label>
+                <input type="number" name="max_members" class="glass-input" value="5" min="2" max="10">
+            </div>
+            <div class="flex justify-end gap-4 mt-4">
+                <button type="button" class="glass-btn" onclick="closeCreateGroupModal()">Abort</button>
+                <button type="submit" class="glass-btn glass-btn-primary">Inaugurate Group</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Invite Modal -->
+<div id="invite-modal" class="modal" style="display: none;">
+    <div class="modal-overlay" onclick="closeInviteModal()"></div>
+    <div class="modal-content glass-card" style="max-width: 500px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+            <h3>Invite to Group</h3>
+            <button class="glass-btn" onclick="closeInviteModal()">
+                <i data-lucide="x" style="width: 20px;"></i>
+            </button>
+        </div>
+        <div id="invite-modal-content">
+            <p class="text-muted mb-4">Select a group to invite this student to:</p>
+            <div id="invite-students-list" style="max-height: 300px; overflow-y: auto;">
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .discovery-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 20px;
+    }
+    .student-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .student-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 32px rgba(0, 245, 255, 0.1);
+    }
+    .group-card {
+        border-left: 4px solid #8b5cf6;
+    }
+    .project-card {
+        border-left: 4px solid var(--accent);
+    }
+    .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .modal-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(4px);
+    }
+    .modal-content {
+        position: relative;
+        z-index: 1001;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+    .availability-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+    .availability-available { background: rgba(74, 222, 128, 0.2); color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.4); }
+    .availability-busy { background: rgba(248, 113, 113, 0.2); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.4); }
+    .availability-open { background: rgba(251, 191, 36, 0.2); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.4); }
+    .skill-tag {
+        display: inline-block;
+        padding: 2px 8px;
+        background: rgba(0, 245, 255, 0.1);
+        border: 1px solid rgba(0, 245, 255, 0.3);
+        border-radius: 4px;
+        font-size: 0.75rem;
+        color: var(--accent);
+        margin: 2px;
+    }
+    .member-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--accent), #8b5cf6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 0.85rem;
+        color: #000;
+        margin-right: -8px;
+        border: 2px solid var(--bg);
+    }
+    .content-section {
+        margin-bottom: 48px;
+    }
+</style>
+
+<script>
+    let networkData = { students: [], groups: [], projects: [] };
+    let myGroups = [];
+    let currentInviteGroupId = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        lucide.createIcons();
+        loadDiscoveryNetwork();
+        loadMyGroups();
+    });
+
+    async function loadDiscoveryNetwork() {
+        try {
+            console.log('[Discovery] Loading network...');
+            const res = await fetch('/discovery/network');
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            
+            networkData = await res.json();
+            console.log('[Discovery] Network loaded:', networkData);
+            
+            document.getElementById('stat-students').textContent = networkData.students.length;
+            document.getElementById('stat-groups').textContent = networkData.groups.length;
+            document.getElementById('stat-projects').textContent = networkData.projects.length;
+            
+            document.getElementById('students-count').textContent = `${networkData.students.length} students`;
+            document.getElementById('groups-count').textContent = `${networkData.groups.length} groups`;
+            document.getElementById('projects-count').textContent = `${networkData.projects.length} projects`;
+            
+            renderAll();
+        } catch (error) {
+            console.error('[Discovery] Error:', error);
+            showError('students-grid', error.message);
+            showError('groups-grid', error.message);
+            showError('projects-grid', error.message);
+        }
+    }
+
+    async function loadMyGroups() {
+        try {
+            const res = await fetch('/student/my-groups');
+            if (res.ok) {
+                const data = await res.json();
+                myGroups = data.groups || [];
+                document.getElementById('stat-my-groups').textContent = myGroups.length;
+            }
+        } catch (e) {
+            console.error('[Discovery] Error loading my groups:', e);
+        }
+    }
+
+    function renderAll() {
+        renderStudents(networkData.students);
+        renderGroups(networkData.groups);
+        renderProjects(networkData.projects);
+    }
+
+    function renderStudents(students) {
+        const grid = document.getElementById('students-grid');
+        
+        if (students.length === 0) {
+            grid.innerHTML = '<div class="glass-card text-center py-12" style="grid-column: 1/-1;"><p class="text-muted">No students found</p></div>';
+            return;
+        }
+        
+        grid.innerHTML = students.map(s => {
+            const skills = s.skills ? s.skills.split(',') : [];
+            const availabilityClass = s.availability === 'available' ? 'availability-available' : 
+                                     s.availability === 'busy' ? 'availability-busy' : 'availability-open';
+            
+            return `
+                <div class="glass-card student-card" style="padding: 20px;">
+                    <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px;">
+                        <div style="width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), #8b5cf6); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.5rem; color: #000;">
+                            ${s.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div style="flex: 1;">
+                            <h4 style="font-size: 1.1rem; margin-bottom: 4px;">${escapeHtml(s.name)}</h4>
+                            <span class="availability-badge ${availabilityClass}">
+                                <span style="width: 6px; height: 6px; border-radius: 50%; background: currentColor;"></span>
+                                ${s.availability}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 12px;">${escapeHtml(s.bio || 'No bio available')}</p>
+                    
+                    ${s.looking_for ? `<p style="font-size: 0.8rem; color: #fbbf24; margin-bottom: 12px;">Looking for: ${escapeHtml(s.looking_for)}</p>` : ''}
+                    
+                    <div style="margin-bottom: 16px;">
+                        ${skills.slice(0, 5).map(skill => `<span class="skill-tag">${escapeHtml(skill)}</span>`).join('')}
+                        ${skills.length > 5 ? `<span class="skill-tag">+${skills.length - 5}</span>` : ''}
+                    </div>
+                    
+                    <div style="display: flex; gap: 8px;">
+                        <button class="glass-btn glass-btn-primary flex-1" onclick="openInviteModalForStudent(${s.id}, '${escapeHtml(s.name)}')">
+                            <i data-lucide="user-plus" style="width: 14px; margin-right: 6px;"></i>
+                            Invite
+                        </button>
+                        <a href="/messages?user=${s.id}" class="glass-btn flex-1" style="text-align: center; text-decoration: none;">
+                            <i data-lucide="message-circle" style="width: 14px; margin-right: 6px;"></i>
+                            Message
+                        </a>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        lucide.createIcons();
+    }
+
+    function renderGroups(groups) {
+        const grid = document.getElementById('groups-grid');
+        
+        if (groups.length === 0) {
+            grid.innerHTML = '<div class="glass-card text-center py-12" style="grid-column: 1/-1;"><p class="text-muted">No active groups</p></div>';
+            return;
+        }
+        
+        grid.innerHTML = groups.map(g => {
+            const memberCount = g.members ? g.members.length : 0;
+            const isFull = memberCount >= (g.max_members || 5);
+            
+            return `
+                <div class="glass-card group-card" style="padding: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                        <div>
+                            <h4 style="font-size: 1.1rem; margin-bottom: 4px;">${escapeHtml(g.name)}</h4>
+                            ${g.project_title ? `<p class="text-muted" style="font-size: 0.85rem;">${escapeHtml(g.project_title)}</p>` : ''}
+                        </div>
+                        <span class="badge" style="background: rgba(139, 92, 246, 0.2); color: #8b5cf6; border: 1px solid rgba(139, 92, 246, 0.4); padding: 4px 10px; border-radius: 20px; font-size: 0.7rem; text-transform: uppercase; font-weight: bold;">
+                            ${g.status}
+                        </span>
+                    </div>
+                    
+                    <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 12px;">${escapeHtml(g.goal || g.description || 'No description')}</p>
+                    
+                    ${g.linked_project_title ? `
+                        <div style="background: rgba(0, 245, 255, 0.05); border: 1px solid rgba(0, 245, 255, 0.2); border-radius: 8px; padding: 8px 12px; margin-bottom: 12px;">
+                            <span style="font-size: 0.75rem; color: var(--accent);">Linked: ${escapeHtml(g.linked_project_title)}</span>
+                        </div>
+                    ` : ''}
+                    
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                        <div style="display: flex; align-items: center;">
+                            ${g.members ? g.members.slice(0, 3).map((m, i) => `
+                                <div class="member-avatar" style="z-index: ${3-i}">${m.name.charAt(0).toUpperCase()}</div>
+                            `).join('') : ''}
+                            ${memberCount > 3 ? `<span style="margin-left: 12px; font-size: 0.8rem; color: var(--text-muted);">+${memberCount - 3}</span>` : ''}
+                        </div>
+                        <span class="text-muted" style="font-size: 0.8rem;">${memberCount}/${g.max_members || 5} members</span>
+                    </div>
+                    
+                    <div style="display: flex; gap: 8px;">
+                        ${g.is_member ? `
+                            <button class="glass-btn w-full" disabled style="opacity: 0.5;">
+                                <i data-lucide="check" style="width: 14px; margin-right: 6px;"></i>
+                                Member
+                            </button>
+                        ` : isFull ? `
+                            <button class="glass-btn w-full" disabled style="opacity: 0.5;">
+                                <i data-lucide="lock" style="width: 14px; margin-right: 6px;"></i>
+                                Full
+                            </button>
+                        ` : `
+                            <button class="glass-btn glass-btn-primary w-full" onclick="requestJoinGroup(${g.id})">
+                                <i data-lucide="log-in" style="width: 14px; margin-right: 6px;"></i>
+                                Request to Join
+                            </button>
+                        `}
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        lucide.createIcons();
+    }
+
+    function renderProjects(projects) {
+        const grid = document.getElementById('projects-grid');
+        
+        if (projects.length === 0) {
+            grid.innerHTML = '<div class="glass-card text-center py-12" style="grid-column: 1/-1;"><p class="text-muted">No open projects</p></div>';
+            return;
+        }
+        
+        grid.innerHTML = projects.map(p => `
+            <div class="glass-card project-card" style="padding: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                    <div>
+                        <h4 style="font-size: 1.1rem; margin-bottom: 4px;">${escapeHtml(p.title)}</h4>
+                        <p class="text-muted" style="font-size: 0.85rem;">by ${escapeHtml(p.faculty_name)}</p>
+                    </div>
+                </div>
+                
+                <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 12px;">${escapeHtml(p.description || 'No description')}</p>
+                
+                <div style="margin-bottom: 16px;">
+                    <span class="text-muted" style="font-size: 0.7rem; text-transform: uppercase; font-weight: bold;">Required Skills:</span>
+                    <div style="margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px;">
+                        ${p.required_skills.map(s => `<span class="skill-tag">${escapeHtml(s)}</span>`).join('')}
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 8px;">
+                    <a href="/student/projects-page" class="glass-btn glass-btn-primary w-full" style="text-align: center; text-decoration: none;">
+                        View & Apply
+                    </a>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function applyFilters() {
+        const skillFilter = document.getElementById('skill-filter').value.toLowerCase();
+        const availabilityFilter = document.getElementById('availability-filter').value;
+        
+        let filteredStudents = networkData.students;
+        
+        if (skillFilter) {
+            filteredStudents = filteredStudents.filter(s => 
+                s.skills && s.skills.toLowerCase().includes(skillFilter)
+            );
+        }
+        
+        if (availabilityFilter) {
+            filteredStudents = filteredStudents.filter(s => 
+                s.availability === availabilityFilter
+            );
+        }
+        
+        renderStudents(filteredStudents);
+    }
+
+    function switchView() {
+        const view = document.getElementById('view-mode').value;
+        
+        document.getElementById('students-section').style.display = (view === 'all' || view === 'students') ? 'block' : 'none';
+        document.getElementById('groups-section').style.display = (view === 'all' || view === 'groups') ? 'block' : 'none';
+        document.getElementById('projects-section').style.display = (view === 'all' || view === 'projects') ? 'block' : 'none';
+    }
+
+    function openCreateGroupModal() {
+        document.getElementById('create-group-modal').style.display = 'flex';
+    }
+
+    function closeCreateGroupModal() {
+        document.getElementById('create-group-modal').style.display = 'none';
+        document.getElementById('create-group-form').reset();
+    }
+
+    async function createGroup(e) {
+        e.preventDefault();
+        const form = e.target;
+        
+        const data = {
+            name: form.name.value,
+            project_title: form.project_title.value,
+            goal: form.goal.value,
+            description: form.description.value,
+            max_members: parseInt(form.max_members.value)
+        };
+        
+        try {
+            const res = await fetch('/student/groups', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await res.json();
+            
+            if (res.ok) {
+                alert('Group created successfully!');
+                closeCreateGroupModal();
+                loadDiscoveryNetwork();
+                loadMyGroups();
+            } else {
+                alert(result.error || 'Failed to create group');
+            }
+        } catch (error) {
+            alert('Network error: ' + error.message);
+        }
+    }
+
+    function openInviteModalForStudent(studentId, studentName) {
+        if (myGroups.length === 0) {
+            alert('You need to create a group first before inviting members.');
+            return;
+        }
+        
+        currentInviteGroupId = null;
+        const list = document.getElementById('invite-students-list');
+        
+        list.innerHTML = myGroups.map(g => `
+            <div class="glass-card" style="padding: 12px; margin-bottom: 8px; cursor: pointer;" onclick="inviteStudentToGroup(${g.id}, ${studentId})">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h5 style="font-size: 1rem;">${escapeHtml(g.name)}</h5>
+                        <p class="text-muted" style="font-size: 0.8rem;">${g.member_count || 1}/${g.max_members || 5} members</p>
+                    </div>
+                    <button class="glass-btn glass-btn-primary">Invite</button>
+                </div>
+            </div>
+        `).join('');
+        
+        document.getElementById('invite-modal').style.display = 'flex';
+    }
+
+    function closeInviteModal() {
+        document.getElementById('invite-modal').style.display = 'none';
+        currentInviteGroupId = null;
+    }
+
+    async function inviteStudentToGroup(groupId, studentId) {
+        try {
+            const res = await fetch(`/student/groups/${groupId}/invite`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ invitee_id: studentId })
+            });
+            
+            const result = await res.json();
+            
+            if (res.ok) {
+                alert('Invitation sent!');
+                closeInviteModal();
+            } else {
+                alert(result.error || 'Failed to send invitation');
+            }
+        } catch (error) {
+            alert('Network error: ' + error.message);
+        }
+    }
+
+    async function requestJoinGroup(groupId) {
+        try {
+            const res = await fetch(`/student/groups/${groupId}/request`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: '' })
+            });
+            
+            const result = await res.json();
+            
+            if (res.ok) {
+                alert('Join request sent! The group leader will review your request.');
+                loadDiscoveryNetwork();
+            } else {
+                alert(result.error || 'Failed to send request');
+            }
+        } catch (error) {
+            alert('Network error: ' + error.message);
+        }
+    }
+
+    function showError(gridId, message) {
+        const grid = document.getElementById(gridId);
+        grid.innerHTML = `
+            <div class="glass-card text-center py-12" style="grid-column: 1/-1;">
+                <i data-lucide="alert-circle" style="width: 48px; height: 48px; color: #f87171; margin-bottom: 12px;"></i>
+                <p class="text-error">${message}</p>
+                <button class="glass-btn mt-4" onclick="loadDiscoveryNetwork()">Retry</button>
+            </div>
+        `;
+        lucide.createIcons();
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+</script>
+{% endblock %}
